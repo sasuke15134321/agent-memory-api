@@ -19,6 +19,7 @@ from payment_verifier import PaymentVerifier
 from memory_engine import MemoryEngine
 from trust_engine import TrustEngine
 from context_engine import ContextEngine
+from recall_engine import RecallEngine
 from database import agent_db
 
 # Environment variables
@@ -45,6 +46,7 @@ payment_verifier = PaymentVerifier()
 memory_engine = MemoryEngine()
 trust_engine = TrustEngine()
 context_engine = ContextEngine()
+recall_engine = RecallEngine()
 
 # Startup event
 @app.on_event("startup")
@@ -76,6 +78,16 @@ class PackageContextRequest(BaseModel):
     include_memories: bool = True
     summary_level: str = "detailed"  # brief, detailed, comprehensive
 
+class CompressContentRequest(BaseModel):
+    content: str
+    compression_level: str = "medium"  # high, medium, low
+    focus: str = "all"  # decisions, constraints, summary, all
+    next_agent_briefing: bool = False
+
+class ExtractContentRequest(BaseModel):
+    content: str
+    extract_type: str = "all"  # decisions, facts, actions, all
+
 # Response models
 class StoreMemoryResponse(BaseModel):
     memory_id: str
@@ -93,6 +105,21 @@ class VerifyTrustResponse(BaseModel):
 
 class PackageContextResponse(BaseModel):
     context_package: Dict[str, Any]
+
+class CompressContentResponse(BaseModel):
+    compressed_summary: str
+    key_decisions: List[str]
+    constraints: List[str]
+    unresolved_issues: List[str]
+    next_agent_briefing: str
+    original_tokens: int
+    compressed_tokens: int
+    compression_ratio: float
+
+class ExtractContentResponse(BaseModel):
+    extracted_items: List[str]
+    confidence_scores: List[float]
+    source_locations: List[str]
 
 # x402 payment protocol endpoint discovery
 @app.get("/.well-known/x402.json")
@@ -166,6 +193,40 @@ async def x402_discovery():
                         "discoverable": True,
                         "language": ["ja", "en"],
                         "specialization": "context-packaging"
+                    }
+                }
+            },
+            {
+                "path": "/api/recall/compress",
+                "method": "POST",
+                "price": "0.05",
+                "currency": "USDC",
+                "network": "base",
+                "description": "会話ログ・作業履歴の圧縮・重要決定事項抽出",
+                "category": "intelligence",
+                "tags": ["ai", "compression", "recall", "memory", "handover"],
+                "extensions": {
+                    "bazaar": {
+                        "discoverable": True,
+                        "language": ["ja", "en"],
+                        "specialization": "content-compression"
+                    }
+                }
+            },
+            {
+                "path": "/api/recall/extract",
+                "method": "POST",
+                "price": "0.03",
+                "currency": "USDC",
+                "network": "base",
+                "description": "テキストから重要情報・決定事項・事実の抽出",
+                "category": "intelligence",
+                "tags": ["ai", "extraction", "analysis", "information"],
+                "extensions": {
+                    "bazaar": {
+                        "discoverable": True,
+                        "language": ["ja", "en"],
+                        "specialization": "information-extraction"
                     }
                 }
             }
@@ -339,6 +400,88 @@ async def package_context(request: PackageContextRequest, http_request: Request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Context packaging failed: {str(e)}")
 
+@app.post("/api/recall/compress", response_model=CompressContentResponse)
+async def compress_content(request: CompressContentRequest, http_request: Request):
+    """Compress conversation logs and work history with x402 payment verification"""
+
+    # Skip payment verification in test mode
+    if not TEST_MODE:
+        payment_header = http_request.headers.get("X-PAYMENT")
+        if not payment_header:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "x402Version": 1,
+                    "accepts": [{
+                        "scheme": "exact",
+                        "network": "base",
+                        "maxAmountRequired": "50000",  # 0.05 USDC
+                        "resource": f"{http_request.url}",
+                        "description": "Content Compression - 会話ログ圧縮・重要決定事項抽出",
+                        "mimeType": "application/json",
+                        "payTo": WALLET_ADDRESS,
+                        "maxTimeoutSeconds": 300,
+                        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                        "extra": {"name": "USDC", "version": "2"}
+                    }]
+                }
+            )
+
+        is_valid = await payment_verifier.verify_payment(payment_header, WALLET_ADDRESS, "0.05")
+        if not is_valid:
+            raise HTTPException(status_code=402, detail="Payment verification failed")
+
+    try:
+        result = await recall_engine.compress_content(
+            content=request.content,
+            compression_level=request.compression_level,
+            focus=request.focus,
+            next_agent_briefing=request.next_agent_briefing
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Content compression failed: {str(e)}")
+
+@app.post("/api/recall/extract", response_model=ExtractContentResponse)
+async def extract_content(request: ExtractContentRequest, http_request: Request):
+    """Extract information from text with x402 payment verification"""
+
+    # Skip payment verification in test mode
+    if not TEST_MODE:
+        payment_header = http_request.headers.get("X-PAYMENT")
+        if not payment_header:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "x402Version": 1,
+                    "accepts": [{
+                        "scheme": "exact",
+                        "network": "base",
+                        "maxAmountRequired": "30000",  # 0.03 USDC
+                        "resource": f"{http_request.url}",
+                        "description": "Information Extraction - テキスト情報抽出",
+                        "mimeType": "application/json",
+                        "payTo": WALLET_ADDRESS,
+                        "maxTimeoutSeconds": 300,
+                        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                        "extra": {"name": "USDC", "version": "2"}
+                    }]
+                }
+            )
+
+        is_valid = await payment_verifier.verify_payment(payment_header, WALLET_ADDRESS, "0.03")
+        if not is_valid:
+            raise HTTPException(status_code=402, detail="Payment verification failed")
+
+    try:
+        result = await recall_engine.extract_information(
+            content=request.content,
+            extract_type=request.extract_type
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Information extraction failed: {str(e)}")
+
 @app.get("/api/stats")
 async def get_stats():
     """Get API statistics (free endpoint)"""
@@ -369,6 +512,7 @@ async def health_check():
             "memory_engine": "operational",
             "trust_engine": "operational",
             "context_engine": "operational",
+            "recall_engine": "operational",
             "database": database_status
         }
     }
@@ -384,6 +528,8 @@ async def root():
             "memory_recall": "/api/memory/recall",
             "trust_verify": "/api/trust/verify",
             "context_package": "/api/context/package",
+            "recall_compress": "/api/recall/compress",
+            "recall_extract": "/api/recall/extract",
             "stats": "/api/stats",
             "health": "/health",
             "discovery": "/.well-known/x402.json"
@@ -392,11 +538,13 @@ async def root():
             "memory_store": "0.05 USDC",
             "memory_recall": "0.03 USDC",
             "trust_verify": "0.20 USDC",
-            "context_package": "0.10 USDC"
+            "context_package": "0.10 USDC",
+            "recall_compress": "0.05 USDC",
+            "recall_extract": "0.03 USDC"
         },
         "network": "base",
         "currency": "USDC",
-        "features": ["Agent Memory Management", "Trust Verification", "Context Handover"]
+        "features": ["Agent Memory Management", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction"]
     }
 
 if __name__ == "__main__":
