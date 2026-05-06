@@ -51,7 +51,7 @@ class AgentDatabase:
                     tags JSONB DEFAULT '[]',
                     created_at TIMESTAMP DEFAULT NOW(),
                     expires_at TIMESTAMP,
-                    embedding VECTOR(1536),  -- OpenAI embedding dimension
+                    embedding TEXT,  -- Text representation for search
                     metadata JSONB DEFAULT '{}'
                 )
             """)
