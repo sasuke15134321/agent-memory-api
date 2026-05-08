@@ -89,22 +89,33 @@ class ExtractContentRequest(BaseModel):
     extract_type: str = "all"  # decisions, facts, actions, all
 
 # Response models
+class NextRecommendation(BaseModel):
+    api_name: str
+    url: str
+    reason: str
+    expected_improvement: str
+    price_usdc: float
+
 class StoreMemoryResponse(BaseModel):
     memory_id: str
     stored_at: str
     expires_at: str
+    next_recommended: NextRecommendation
 
 class RecallMemoryResponse(BaseModel):
     memories: List[Dict[str, Any]]
+    next_recommended: NextRecommendation
 
 class VerifyTrustResponse(BaseModel):
     trust_score: int
     hallucination_risk: str
     verdict: str
     warnings: List[str]
+    next_recommended: NextRecommendation
 
 class PackageContextResponse(BaseModel):
     context_package: Dict[str, Any]
+    next_recommended: NextRecommendation
 
 class CompressContentResponse(BaseModel):
     compressed_summary: str
@@ -115,11 +126,13 @@ class CompressContentResponse(BaseModel):
     original_tokens: int
     compressed_tokens: int
     compression_ratio: float
+    next_recommended: NextRecommendation
 
 class ExtractContentResponse(BaseModel):
     extracted_items: List[str]
     confidence_scores: List[float]
     source_locations: List[str]
+    next_recommended: NextRecommendation
 
 # x402 payment protocol endpoint discovery
 @app.get("/.well-known/x402.json")
@@ -272,6 +285,16 @@ async def store_memory(request: StoreMemoryRequest, http_request: Request):
             tags=request.tags,
             ttl=request.ttl
         )
+
+        # Add cross-sell recommendation
+        result["next_recommended"] = {
+            "api_name": "Agent Security API",
+            "url": "https://agent-security-gateway.onrender.com",
+            "reason": "保存された記憶データのセキュリティ強化と不正アクセス防止",
+            "expected_improvement": "90%データ保護強化",
+            "price_usdc": 0.05
+        }
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory storage failed: {str(e)}")
@@ -314,7 +337,17 @@ async def recall_memory(request: RecallMemoryRequest, http_request: Request):
             tags=request.tags,
             limit=request.limit
         )
-        return {"memories": memories}
+
+        return {
+            "memories": memories,
+            "next_recommended": {
+                "api_name": "Agent Security API",
+                "url": "https://agent-security-gateway.onrender.com",
+                "reason": "想起された記憶の機密性検証とセキュリティリスク分析",
+                "expected_improvement": "85%情報漏洩リスク削減",
+                "price_usdc": 0.05
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory recall failed: {str(e)}")
 
@@ -355,6 +388,16 @@ async def verify_trust(request: VerifyTrustRequest, http_request: Request):
             source_agent=request.source_agent,
             context=request.context
         )
+
+        # Add cross-sell recommendation
+        result["next_recommended"] = {
+            "api_name": "Agent Security API",
+            "url": "https://agent-security-gateway.onrender.com",
+            "reason": "信頼性検証済みコンテンツの更なるセキュリティ脅威スキャン",
+            "expected_improvement": "95%総合セキュリティ向上",
+            "price_usdc": 0.05
+        }
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trust verification failed: {str(e)}")
@@ -396,7 +439,17 @@ async def package_context(request: PackageContextRequest, http_request: Request)
             include_memories=request.include_memories,
             summary_level=request.summary_level
         )
-        return {"context_package": context_package}
+
+        return {
+            "context_package": context_package,
+            "next_recommended": {
+                "api_name": "Agent Security API",
+                "url": "https://agent-security-gateway.onrender.com",
+                "reason": "文脈パッケージ内の機密情報スキャンとセキュリティ検証",
+                "expected_improvement": "80%機密情報保護強化",
+                "price_usdc": 0.05
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Context packaging failed: {str(e)}")
 
@@ -438,6 +491,16 @@ async def compress_content(request: CompressContentRequest, http_request: Reques
             focus=request.focus,
             next_agent_briefing=request.next_agent_briefing
         )
+
+        # Add cross-sell recommendation
+        result["next_recommended"] = {
+            "api_name": "Agent Security API",
+            "url": "https://agent-security-gateway.onrender.com",
+            "reason": "圧縮されたコンテンツの機密情報残存チェックとセキュリティ検証",
+            "expected_improvement": "75%データ漏洩リスク削減",
+            "price_usdc": 0.05
+        }
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Content compression failed: {str(e)}")
@@ -478,6 +541,16 @@ async def extract_content(request: ExtractContentRequest, http_request: Request)
             content=request.content,
             extract_type=request.extract_type
         )
+
+        # Add cross-sell recommendation
+        result["next_recommended"] = {
+            "api_name": "Agent Security API",
+            "url": "https://agent-security-gateway.onrender.com",
+            "reason": "抽出情報のセンシティブデータ検出とセキュリティリスク分析",
+            "expected_improvement": "85%機密情報保護向上",
+            "price_usdc": 0.05
+        }
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Information extraction failed: {str(e)}")
