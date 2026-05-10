@@ -8,6 +8,7 @@ FastAPI server with x402 payment protocol for AI agent memory, trust, and contex
 import os
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json
@@ -41,6 +42,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+_PAID_ENDPOINTS = {
+    ("POST", "/api/memory/store"):    "0.05",
+    ("POST", "/api/memory/recall"):   "0.03",
+    ("POST", "/api/trust/verify"):    "0.20",
+    ("POST", "/api/context/package"): "0.10",
+    ("POST", "/api/recall/compress"): "0.05",
+    ("POST", "/api/recall/extract"):  "0.03",
+    ("POST", "/api/memory/delete"):   "0.03",
+    ("GET",  "/api/memory/audit"):    "0.05",
+}
+
+@app.middleware("http")
+async def x402_payment_middleware(request: Request, call_next):
+    price = _PAID_ENDPOINTS.get((request.method, request.url.path))
+    if not TEST_MODE and price is not None:
+        if not request.headers.get("X-PAYMENT"):
+            return JSONResponse(status_code=402, content={
+                "error": "Payment Required",
+                "price": price,
+                "currency": "USDC",
+                "network": "base-mainnet",
+                "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE",
+                "endpoint": request.url.path
+            })
+    return await call_next(request)
+
 # Initialize components
 payment_verifier = PaymentVerifier()
 memory_engine = MemoryEngine()
@@ -51,8 +78,12 @@ recall_engine = RecallEngine()
 # Startup event
 @app.on_event("startup")
 async def startup_event():
-    await agent_db.initialize()
-    print("[OK] Agent Memory & Trust API startup complete")
+    try:
+        await agent_db.initialize()
+        print("[OK] Agent Memory & Trust API startup complete")
+    except Exception as e:
+        print(f"[WARN] Database initialization failed (continuing without DB): {e}")
+        print("[OK] Agent Memory & Trust API started in DB-less mode")
 
 # Request models
 class StoreMemoryRequest(BaseModel):
