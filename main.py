@@ -88,6 +88,11 @@ class ExtractContentRequest(BaseModel):
     content: str
     extract_type: str = "all"  # decisions, facts, actions, all
 
+class DeleteMemoryRequest(BaseModel):
+    memory_id: str
+    reason: str
+    agent_id: str
+
 # Response models
 class NextRecommendation(BaseModel):
     api_name: str
@@ -251,6 +256,40 @@ async def x402_discovery():
                         "discoverable": True,
                         "language": ["ja", "en"],
                         "specialization": "information-extraction"
+                    }
+                }
+            },
+            {
+                "path": "/api/memory/delete",
+                "method": "POST",
+                "price": "0.03",
+                "currency": "USDC",
+                "network": "base",
+                "description": "記憶の完全削除と不変の削除証跡（SHA256）を生成",
+                "category": "infrastructure",
+                "tags": ["ai", "memory", "delete", "audit", "proof"],
+                "extensions": {
+                    "bazaar": {
+                        "discoverable": True,
+                        "language": ["ja", "en"],
+                        "specialization": "memory-deletion-proof"
+                    }
+                }
+            },
+            {
+                "path": "/api/memory/audit",
+                "method": "GET",
+                "price": "0.05",
+                "currency": "USDC",
+                "network": "base",
+                "description": "全操作（保存・呼び出し・削除）の監査ログを返す",
+                "category": "infrastructure",
+                "tags": ["ai", "memory", "audit", "log", "compliance"],
+                "extensions": {
+                    "bazaar": {
+                        "discoverable": True,
+                        "language": ["ja", "en"],
+                        "specialization": "memory-audit-log"
                     }
                 }
             }
@@ -566,6 +605,91 @@ async def extract_content(request: ExtractContentRequest, http_request: Request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Information extraction failed: {str(e)}")
 
+@app.post("/api/memory/delete")
+async def delete_memory(request: DeleteMemoryRequest, http_request: Request):
+    """Delete a memory and return an immutable SHA256 deletion proof with x402 payment verification"""
+
+    if not TEST_MODE:
+        payment_header = http_request.headers.get("X-PAYMENT")
+        if not payment_header:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "x402Version": 1,
+                    "accepts": [{
+                        "scheme": "exact",
+                        "network": "base",
+                        "maxAmountRequired": "30000",  # 0.03 USDC
+                        "resource": f"{http_request.url}",
+                        "description": "Memory Deletion Proof - 記憶削除証跡",
+                        "mimeType": "application/json",
+                        "payTo": WALLET_ADDRESS,
+                        "maxTimeoutSeconds": 300,
+                        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                        "extra": {"name": "USDC", "version": "2"}
+                    }]
+                }
+            )
+
+        is_valid = await payment_verifier.verify_payment(payment_header, WALLET_ADDRESS, "0.03")
+        if not is_valid:
+            raise HTTPException(status_code=402, detail="Payment verification failed")
+
+    try:
+        result = await agent_db.delete_memory(
+            memory_id=request.memory_id,
+            agent_id=request.agent_id,
+            reason=request.reason
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Memory deletion failed: {str(e)}")
+
+
+@app.get("/api/memory/audit")
+async def get_audit_log(http_request: Request, agent_id: Optional[str] = None, limit: int = 100):
+    """Return full audit log of store / recall / delete operations with x402 payment verification"""
+
+    if not TEST_MODE:
+        payment_header = http_request.headers.get("X-PAYMENT")
+        if not payment_header:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "x402Version": 1,
+                    "accepts": [{
+                        "scheme": "exact",
+                        "network": "base",
+                        "maxAmountRequired": "50000",  # 0.05 USDC
+                        "resource": f"{http_request.url}",
+                        "description": "Memory Audit Log - 監査ログ",
+                        "mimeType": "application/json",
+                        "payTo": WALLET_ADDRESS,
+                        "maxTimeoutSeconds": 300,
+                        "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                        "extra": {"name": "USDC", "version": "2"}
+                    }]
+                }
+            )
+
+        is_valid = await payment_verifier.verify_payment(payment_header, WALLET_ADDRESS, "0.05")
+        if not is_valid:
+            raise HTTPException(status_code=402, detail="Payment verification failed")
+
+    try:
+        logs = await agent_db.get_audit_logs(agent_id=agent_id, limit=limit)
+        return {
+            "audit_logs": logs,
+            "total_count": len(logs),
+            "agent_id_filter": agent_id,
+            "generated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audit log retrieval failed: {str(e)}")
+
+
 @app.get("/api/stats")
 async def get_stats():
     """Get API statistics (free endpoint)"""
@@ -610,6 +734,8 @@ async def root():
         "endpoints": {
             "memory_store": "/api/memory/store",
             "memory_recall": "/api/memory/recall",
+            "memory_delete": "/api/memory/delete",
+            "memory_audit": "/api/memory/audit",
             "trust_verify": "/api/trust/verify",
             "context_package": "/api/context/package",
             "recall_compress": "/api/recall/compress",
@@ -621,6 +747,8 @@ async def root():
         "pricing": {
             "memory_store": "0.05 USDC",
             "memory_recall": "0.03 USDC",
+            "memory_delete": "0.03 USDC",
+            "memory_audit": "0.05 USDC",
             "trust_verify": "0.20 USDC",
             "context_package": "0.10 USDC",
             "recall_compress": "0.05 USDC",
@@ -628,7 +756,7 @@ async def root():
         },
         "network": "base",
         "currency": "USDC",
-        "features": ["Agent Memory Management", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction"]
+        "features": ["Agent Memory Management", "AES-256 Encryption", "Deletion Proof", "Audit Log", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction"]
     }
 
 if __name__ == "__main__":

@@ -51,8 +51,35 @@ class AgentDatabase:
                     tags JSONB DEFAULT '[]',
                     created_at TIMESTAMP DEFAULT NOW(),
                     expires_at TIMESTAMP,
-                    embedding TEXT,  -- Text representation for search
+                    embedding TEXT,
                     metadata JSONB DEFAULT '{}'
+                )
+            """)
+
+            # Create deletion_logs table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS deletion_logs (
+                    id SERIAL PRIMARY KEY,
+                    memory_id VARCHAR(255) NOT NULL,
+                    agent_id VARCHAR(255) NOT NULL,
+                    reason TEXT,
+                    deletion_proof VARCHAR(255) NOT NULL,
+                    original_context_hash VARCHAR(255),
+                    deleted_at TIMESTAMP DEFAULT NOW(),
+                    irreversible BOOLEAN DEFAULT TRUE
+                )
+            """)
+
+            # Create audit_logs table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    operation VARCHAR(50) NOT NULL,
+                    agent_id VARCHAR(255),
+                    memory_id VARCHAR(255),
+                    operation_hash VARCHAR(255) NOT NULL,
+                    details JSONB DEFAULT '{}',
+                    timestamp TIMESTAMP DEFAULT NOW()
                 )
             """)
 
@@ -118,6 +145,12 @@ class AgentDatabase:
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_agent_id ON sessions(agent_id)")
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_project_id ON sessions(project_id)")
 
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_deletion_logs_memory_id ON deletion_logs(memory_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_deletion_logs_agent_id ON deletion_logs(agent_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_agent_id ON audit_logs(agent_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_operation ON audit_logs(operation)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp)")
+
             print("[OK] PostgreSQL database initialized with all tables and indexes")
 
         finally:
@@ -154,6 +187,16 @@ class AgentDatabase:
 
             # Update session
             await self._update_session(conn, session_id, agent_id)
+
+            # Write audit log for store operation
+            op_hash = hashlib.sha256(
+                f"store:{agent_id}:{memory_id}:{stored_at.isoformat()}".encode()
+            ).hexdigest()
+            await conn.execute("""
+                INSERT INTO audit_logs (operation, agent_id, memory_id, operation_hash, details, timestamp)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            """, "store", agent_id, memory_id, op_hash,
+                json.dumps({"session_id": session_id, "tag_count": len(tags or [])}), stored_at)
 
             return {
                 "memory_id": memory_id,
@@ -194,8 +237,9 @@ class AgentDatabase:
                 base_query += f" AND tags @> ${param_count}"
                 params.append(json.dumps(tags))
 
-            # Add text search if query is provided
-            if query.strip():
+            # Skip SQL text search when encryption is active (filtering is done in Python after decryption)
+            encryption_active = bool(os.getenv("ENCRYPTION_KEY"))
+            if query.strip() and not encryption_active:
                 param_count += 1
                 base_query += f" AND context ILIKE ${param_count}"
                 params.append(f"%{query}%")
@@ -219,6 +263,95 @@ class AgentDatabase:
 
             return memories
 
+        finally:
+            await conn.close()
+
+    async def delete_memory(self, memory_id: str, agent_id: str, reason: str) -> Dict[str, Any]:
+        """
+        Hard-delete a memory and write an immutable deletion proof.
+
+        Returns dict with deletion_proof, timestamp, and irreversible flag.
+        """
+        conn = await self.get_connection()
+        try:
+            # Fetch original context hash before deleting
+            row = await conn.fetchrow(
+                "SELECT context FROM memories WHERE memory_id = $1 AND agent_id = $2",
+                memory_id, agent_id
+            )
+            if not row:
+                raise ValueError(f"Memory {memory_id} not found for agent {agent_id}")
+
+            original_context_hash = hashlib.sha256(row["context"].encode()).hexdigest()
+
+            deleted_at = datetime.now()
+
+            # Build deletion proof: SHA256 of all deletion details
+            proof_source = f"{memory_id}:{agent_id}:{reason}:{deleted_at.isoformat()}:{original_context_hash}"
+            deletion_proof = hashlib.sha256(proof_source.encode()).hexdigest()
+
+            # Hard delete from memories
+            await conn.execute("DELETE FROM memories WHERE memory_id = $1", memory_id)
+
+            # Store immutable deletion log
+            await conn.execute("""
+                INSERT INTO deletion_logs
+                    (memory_id, agent_id, reason, deletion_proof, original_context_hash, deleted_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            """, memory_id, agent_id, reason, deletion_proof, original_context_hash, deleted_at)
+
+            # Write to audit log
+            op_hash = hashlib.sha256(
+                f"delete:{agent_id}:{memory_id}:{deleted_at.isoformat()}".encode()
+            ).hexdigest()
+            await conn.execute("""
+                INSERT INTO audit_logs (operation, agent_id, memory_id, operation_hash, details, timestamp)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            """, "delete", agent_id, memory_id, op_hash,
+                json.dumps({"reason": reason, "deletion_proof": deletion_proof}), deleted_at)
+
+            return {
+                "deleted": True,
+                "deletion_proof": deletion_proof,
+                "timestamp": deleted_at.isoformat(),
+                "reason": reason,
+                "irreversible": True
+            }
+
+        finally:
+            await conn.close()
+
+    async def get_audit_logs(self, agent_id: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Return audit log entries (store / recall / delete) ordered by timestamp desc."""
+        conn = await self.get_connection()
+        try:
+            if agent_id:
+                rows = await conn.fetch("""
+                    SELECT operation, agent_id, memory_id, operation_hash, details, timestamp
+                    FROM audit_logs
+                    WHERE agent_id = $1
+                    ORDER BY timestamp DESC
+                    LIMIT $2
+                """, agent_id, limit)
+            else:
+                rows = await conn.fetch("""
+                    SELECT operation, agent_id, memory_id, operation_hash, details, timestamp
+                    FROM audit_logs
+                    ORDER BY timestamp DESC
+                    LIMIT $1
+                """, limit)
+
+            return [
+                {
+                    "operation": row["operation"],
+                    "agent_id": row["agent_id"],
+                    "memory_id": row["memory_id"],
+                    "operation_hash": row["operation_hash"],
+                    "details": json.loads(row["details"]) if row["details"] else {},
+                    "timestamp": row["timestamp"].isoformat()
+                }
+                for row in rows
+            ]
         finally:
             await conn.close()
 

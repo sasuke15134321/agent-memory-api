@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import re
 
 from database import agent_db
+from encryption_engine import encryption_engine
 
 
 class MemoryEngine:
@@ -47,6 +48,9 @@ class MemoryEngine:
 
             # Clean and normalize context
             context = self._clean_context(context)
+
+            # Encrypt context before storing
+            context = encryption_engine.encrypt(context)
 
             # Extract additional tags from content if not provided
             if tags is None:
@@ -108,6 +112,10 @@ class MemoryEngine:
                 tags=tags,
                 limit=limit * 2  # Get more to allow for relevance filtering
             )
+
+            # Decrypt context fields before scoring
+            for m in memories:
+                m["context"] = encryption_engine.decrypt(m["context"])
 
             # Apply relevance scoring and filtering
             scored_memories = self._score_relevance(memories, query)
