@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "agent_name": "Agent Memory System",
   "category": "memory",
-  "purpose": "AI学習履歴・パターン分析による意思決定精度向上システム",
+  "purpose": "日本語会話履歴・商品運用履歴・Agent Evolution連携対応のAIエージェント用メモリAPI。AES-256-GCM暗号化・削除証跡付き。Japanese long-term memory for AI agents.",
   "benefit": "学習効率400%向上、意思決定ミス90%削減、業務生産性300%向上",
   "risk_if_not_used": "同じ失敗の繰り返し、学習機会の損失、競合他社に対する遅れ",
   "price_usdc": 0.08,
