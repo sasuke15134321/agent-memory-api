@@ -171,6 +171,70 @@ class ExtractContentResponse(BaseModel):
     next_recommended: NextRecommendation
 
 # AI agent policy endpoint
+@app.get("/.well-known/mcp/server-card.json")
+async def mcp_server_card():
+    """Smithery MCP server card - allows Smithery to discover tools without MCP protocol scan"""
+    return {
+        "serverInfo": {
+            "name": "agent-memory-api",
+            "version": "1.0.0"
+        },
+        "tools": [
+            {
+                "name": "memory_store",
+                "description": "Store memory with AES-256 encryption",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string"},
+                        "agent_id": {"type": "string"},
+                        "namespace": {"type": "string"}
+                    },
+                    "required": ["content"]
+                }
+            },
+            {
+                "name": "memory_recall",
+                "description": "Recall memories by semantic query",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "agent_id": {"type": "string"},
+                        "limit": {"type": "number"}
+                    },
+                    "required": ["query"]
+                }
+            },
+            {
+                "name": "memory_delete",
+                "description": "Delete memory with SHA256 audit proof",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "memory_id": {"type": "string"},
+                        "agent_id": {"type": "string"}
+                    },
+                    "required": ["memory_id"]
+                }
+            },
+            {
+                "name": "memory_audit",
+                "description": "Get audit log of all memory operations",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "agent_id": {"type": "string"},
+                        "limit": {"type": "number"}
+                    },
+                    "required": []
+                }
+            }
+        ],
+        "resources": [],
+        "prompts": []
+    }
+
 @app.get("/.well-known/ai-agent-policy")
 async def ai_agent_policy():
     import json
