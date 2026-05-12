@@ -95,10 +95,10 @@ paths:
       operationId: delete_memory
       summary: Delete memory with SHA256 audit proof
       description: >
-        Permanently deletes a stored memory.
-        Returns immutable SHA256 deletion proof for compliance.
-        Deletion is recorded in audit log with reason and timestamp.
-        Use for GDPR/APPI right-to-erasure compliance.
+        Use when memory must be deleted permanently.
+        Returns SHA256 deletion proof for compliance.
+        Irreversible - creates immutable audit trail.
+        Required for GDPR and Japanese privacy law compliance.
       tags: [Memory]
       security:
         - x402Payment: []
@@ -129,11 +129,11 @@ paths:
   /api/memory/audit:
     get:
       operationId: get_audit_log
-      summary: Get audit log of all memory operations
+      summary: Get complete audit log of memory operations
       description: >
-        Returns full audit trail of store, recall, and delete operations.
-        Filter by agent_id. Use for compliance, debugging, and billing.
-        Each entry includes timestamp, operation type, and outcome.
+        Use for compliance and enterprise audit requirements.
+        Returns full history of store, recall, delete operations.
+        Essential for Japanese enterprise deployments.
       tags: [Memory]
       security:
         - x402Payment: []
