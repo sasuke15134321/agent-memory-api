@@ -8,7 +8,7 @@ FastAPI server with x402 payment protocol for AI agent memory, trust, and contex
 import os
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import json
@@ -853,6 +853,17 @@ async def root():
         "currency": "USDC",
         "features": ["Agent Memory Management", "AES-256 Encryption", "Deletion Proof", "Audit Log", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction"]
     }
+
+@app.get("/llms.txt")
+async def llms_txt():
+    content = open("llms.txt").read()
+    return PlainTextResponse(content)
+
+@app.get("/examples.md")
+async def examples_md():
+    content = open("examples.md").read()
+    return PlainTextResponse(content)
+
 
 if __name__ == "__main__":
     import uvicorn

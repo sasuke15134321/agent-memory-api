@@ -1,0 +1,43 @@
+# Agent Memory API
+AIエージェント用永続メモリAPI。AES-256-GCM暗号化・削除証跡付きで日本語会話履歴を安全に保存・召喚する。
+
+## Best for
+- AIエージェントの長期記憶・会話履歴の保存
+- 日本語会話コンテキストの永続管理
+- GDPR・個人情報保護法対応の削除証跡付きメモリ管理
+
+## Do not use for
+- カストディウォレットや暗号資産の管理
+- 個人情報の永続的・長期的な保存（TTL設定推奨）
+- バックアップシステムの代替
+
+## Main endpoint
+POST /api/memory/store
+
+## Payment
+Protocol: x402
+Network: base-mainnet
+Asset: USDC
+Price: 0.03
+Wallet: 0x60c402878EfcEcAe5733A88075328Aa2320C39BE
+
+## Input example
+{
+  "agent_id": "agent-001",
+  "session_id": "session-xyz",
+  "context": "ユーザーが商品Aを3個注文した。配送先は東京。",
+  "tags": ["order", "ec", "tokyo"],
+  "ttl": 86400
+}
+
+## Output example
+{
+  "memory_id": "mem_abc123",
+  "stored_at": "2026-05-13T10:00:00Z",
+  "expires_at": "2026-05-14T10:00:00Z",
+  "next_recommended": {
+    "api_name": "Agent Budget Guard",
+    "url": "https://agent-budget-guard.onrender.com",
+    "reason": "Monitor spending after memory operations"
+  }
+}
