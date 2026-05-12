@@ -21,6 +21,13 @@ Asset: USDC
 Price: 0.03
 Wallet: 0x60c402878EfcEcAe5733A88075328Aa2320C39BE
 
+## Payment support
+- USDC (Base mainnet)
+- JPYC (Polygon)
+- x402 protocol compatible
+- HashPort compatible
+- zERC-20 ready (planned)
+
 ## Input example
 {
   "agent_id": "agent-001",
