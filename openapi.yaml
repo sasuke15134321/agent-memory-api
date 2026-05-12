@@ -1,0 +1,506 @@
+openapi: "3.1.0"
+info:
+  title: Agent Memory API
+  version: "1.0.0"
+  description: >
+    Use this API to give AI agents persistent Japanese memory.
+    Store, recall, and delete memories with AES-256 encryption.
+    Optimized for Japanese conversation history,
+    EC operation logs, and long-term context management.
+    Includes deletion proof and audit logs.
+    x402 USDC pay-per-call. No signup required.
+    Compatible with bmdpat Agent Memory API workflows.
+servers:
+  - url: https://agent-memory-api-bix5.onrender.com
+    description: Production (Render)
+
+paths:
+  /api/memory/store:
+    post:
+      operationId: store_memory
+      summary: Store AI agent memory with AES-256 encryption
+      description: >
+        Use when AI agent needs to remember something long-term.
+        Stores Japanese conversation history, preferences,
+        product operation logs, and agent decisions.
+        AES-256-GCM encrypted. Returns memory_id.
+      tags: [Memory]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StoreMemoryRequest'
+            example:
+              agent_id: "agent-001"
+              session_id: "session-xyz"
+              context: "ユーザーが商品Aを3個注文した。配送先は東京。"
+              tags: ["order", "ec", "tokyo"]
+              ttl: 86400
+      responses:
+        '200':
+          description: Memory stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StoreMemoryResponse'
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/memory/recall:
+    post:
+      operationId: recall_memory
+      summary: Recall relevant memories by semantic query
+      description: >
+        Use when AI agent needs context from past interactions.
+        Searches Japanese memory by semantic similarity.
+        Returns relevant memories with trust scores.
+        Optimized for Japanese language queries.
+      tags: [Memory]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecallMemoryRequest'
+            example:
+              agent_id: "agent-001"
+              query: "東京への注文履歴"
+              tags: ["order"]
+              limit: 10
+      responses:
+        '200':
+          description: Matching memories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecallMemoryResponse'
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/memory/delete:
+    post:
+      operationId: delete_memory
+      summary: Delete memory with SHA256 audit proof
+      description: >
+        Permanently deletes a stored memory.
+        Returns immutable SHA256 deletion proof for compliance.
+        Deletion is recorded in audit log with reason and timestamp.
+        Use for GDPR/APPI right-to-erasure compliance.
+      tags: [Memory]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteMemoryRequest'
+            example:
+              memory_id: "mem_abc123"
+              agent_id: "agent-001"
+              reason: "User requested data deletion"
+      responses:
+        '200':
+          description: Memory deleted with proof
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteMemoryResponse'
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/memory/audit:
+    get:
+      operationId: get_audit_log
+      summary: Get audit log of all memory operations
+      description: >
+        Returns full audit trail of store, recall, and delete operations.
+        Filter by agent_id. Use for compliance, debugging, and billing.
+        Each entry includes timestamp, operation type, and outcome.
+      tags: [Memory]
+      security:
+        - x402Payment: []
+      parameters:
+        - name: agent_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter logs by agent ID
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogResponse'
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/trust/verify:
+    post:
+      operationId: verify_trust
+      summary: Verify AI content trust and detect hallucinations
+      description: >
+        Use before acting on AI-generated content.
+        Detects hallucinations, unverifiable claims, and trust risks.
+        Returns trust score and hallucination risk level.
+      tags: [Trust]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTrustRequest'
+      responses:
+        '200':
+          description: Trust verification result
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/context/package:
+    post:
+      operationId: package_context
+      summary: Package project context for agent handover
+      description: >
+        Creates a structured context package for agent-to-agent handover.
+        Bundles memories, decisions, and constraints into a transferable format.
+        Use when switching AI agents mid-task.
+      tags: [Context]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PackageContextRequest'
+      responses:
+        '200':
+          description: Context package
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/recall/compress:
+    post:
+      operationId: compress_content
+      summary: Compress conversation logs and extract key decisions
+      description: >
+        Compresses long conversation history into a dense summary.
+        Extracts key decisions, constraints, and unresolved issues.
+        Use before context window overflow to preserve critical information.
+      tags: [Recall]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompressContentRequest'
+      responses:
+        '200':
+          description: Compressed summary with extracted decisions
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/recall/extract:
+    post:
+      operationId: extract_content
+      summary: Extract structured information from text
+      description: >
+        Extracts decisions, facts, and action items from unstructured text.
+        Returns confidence scores and source locations.
+        Supports Japanese text extraction natively.
+      tags: [Recall]
+      security:
+        - x402Payment: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExtractContentRequest'
+      responses:
+        '200':
+          description: Extracted information
+        '402':
+          description: Payment Required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentRequired'
+
+  /api/stats:
+    get:
+      operationId: get_stats
+      summary: Get API usage statistics
+      description: Returns aggregate memory operation stats (free endpoint).
+      tags: [Stats]
+      responses:
+        '200':
+          description: Usage statistics
+
+  /.well-known/x402.json:
+    get:
+      summary: x402 endpoint discovery
+      description: Lists all paid endpoints with pricing for Agentic.Market discovery.
+      tags: [Discovery]
+      responses:
+        '200':
+          description: x402 discovery manifest
+
+  /.well-known/mcp/server-card.json:
+    get:
+      summary: MCP server card for Smithery
+      description: Tool definitions for Smithery MCP registry discovery.
+      tags: [Discovery]
+      responses:
+        '200':
+          description: MCP server card
+
+  /health:
+    get:
+      summary: Health check
+      tags: [System]
+      responses:
+        '200':
+          description: Service health status
+
+components:
+  securitySchemes:
+    x402Payment:
+      type: apiKey
+      in: header
+      name: X-PAYMENT
+      description: >
+        x402 USDC payment token on Base Mainnet.
+        Omit when TEST_MODE=true (development).
+
+  schemas:
+    StoreMemoryRequest:
+      type: object
+      required: [agent_id, session_id, context]
+      properties:
+        agent_id:
+          type: string
+        session_id:
+          type: string
+        context:
+          type: string
+          description: Memory content (Japanese supported)
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+        ttl:
+          type: integer
+          default: 86400
+          description: Time-to-live in seconds
+
+    StoreMemoryResponse:
+      type: object
+      properties:
+        memory_id:
+          type: string
+        stored_at:
+          type: string
+        expires_at:
+          type: string
+        next_recommended:
+          $ref: '#/components/schemas/NextRecommendation'
+
+    RecallMemoryRequest:
+      type: object
+      required: [agent_id, query]
+      properties:
+        agent_id:
+          type: string
+        query:
+          type: string
+          description: Search query (Japanese supported)
+        tags:
+          type: array
+          items:
+            type: string
+          default: []
+        limit:
+          type: integer
+          default: 10
+
+    RecallMemoryResponse:
+      type: object
+      properties:
+        memories:
+          type: array
+          items:
+            type: object
+        next_recommended:
+          $ref: '#/components/schemas/NextRecommendation'
+
+    DeleteMemoryRequest:
+      type: object
+      required: [memory_id, agent_id, reason]
+      properties:
+        memory_id:
+          type: string
+        agent_id:
+          type: string
+        reason:
+          type: string
+
+    DeleteMemoryResponse:
+      type: object
+      properties:
+        deleted:
+          type: boolean
+        deletion_proof:
+          type: string
+          description: SHA256 hash of deleted memory for audit trail
+        deleted_at:
+          type: string
+
+    AuditLogResponse:
+      type: object
+      properties:
+        audit_logs:
+          type: array
+          items:
+            type: object
+        total_count:
+          type: integer
+        agent_id_filter:
+          type: string
+        generated_at:
+          type: string
+
+    VerifyTrustRequest:
+      type: object
+      required: [content, source_agent]
+      properties:
+        content:
+          type: string
+        source_agent:
+          type: string
+        context:
+          type: string
+          default: ""
+
+    PackageContextRequest:
+      type: object
+      required: [project_id]
+      properties:
+        project_id:
+          type: string
+        include_memories:
+          type: boolean
+          default: true
+        summary_level:
+          type: string
+          enum: [brief, detailed, comprehensive]
+          default: detailed
+
+    CompressContentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        compression_level:
+          type: string
+          enum: [high, medium, low]
+          default: medium
+        focus:
+          type: string
+          enum: [decisions, constraints, summary, all]
+          default: all
+        next_agent_briefing:
+          type: boolean
+          default: false
+
+    ExtractContentRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+        extract_type:
+          type: string
+          enum: [decisions, facts, actions, all]
+          default: all
+
+    NextRecommendation:
+      type: object
+      properties:
+        api_name:
+          type: string
+        url:
+          type: string
+        reason:
+          type: string
+        expected_improvement:
+          type: string
+        price_usdc:
+          type: number
+
+    PaymentRequired:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Payment Required
+        price:
+          type: string
+        currency:
+          type: string
+          example: USDC
+        network:
+          type: string
+          example: base-mainnet
+        payTo:
+          type: string
+          example: "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+        endpoint:
+          type: string
