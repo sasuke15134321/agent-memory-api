@@ -16,6 +16,7 @@ import base64
 from datetime import datetime, timedelta
 import asyncio
 import traceback
+from fastapi.openapi.utils import get_openapi
 
 from payment_verifier import PaymentVerifier
 from memory_engine import MemoryEngine
@@ -42,6 +43,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema["info"]["x-guidance"] = "Store and recall encrypted AI agent memory across sessions. AES-256 encryption. Payment policy and audit memory."
+
+    price_map = {
+        "/api/memory/store": "0.05",
+        "/api/memory/recall": "0.03",
+        "/api/trust/verify": "0.20",
+        "/api/context/package": "0.10",
+        "/api/recall/compress": "0.05",
+        "/api/recall/extract": "0.03",
+        "/api/memory/delete": "0.03",
+        "/api/memory/audit": "0.05"
+    }
+
+    for path, methods in openapi_schema.get("paths", {}).items():
+        if path in price_map:
+            for method, operation in methods.items():
+                if isinstance(operation, dict):
+                    operation["x-payment-info"] = {
+                        "protocols": ["x402"],
+                        "authMode": "x402",
+                        "price": {
+                            "mode": "fixed",
+                            "currency": "USDC",
+                            "amount": price_map[path]
+                        }
+                    }
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 _PAID_ENDPOINTS = {
     ("POST", "/api/memory/store"):    "0.05",
