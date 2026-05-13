@@ -392,15 +392,19 @@ async def x402_discovery_manifest():
     return {
         "version": 1,
         "resources": [
-            "POST /api/memory/store",
-            "POST /api/memory/recall",
-            "POST /api/trust/verify",
-            "POST /api/context/package",
-            "POST /api/recall/compress",
-            "POST /api/recall/extract",
-            "POST /api/memory/delete",
-            "GET /api/memory/audit"
-        ]
+            "https://agent-memory-api-bix5.onrender.com/api/memory/store",
+            "https://agent-memory-api-bix5.onrender.com/api/memory/recall",
+            "https://agent-memory-api-bix5.onrender.com/api/trust/verify",
+            "https://agent-memory-api-bix5.onrender.com/api/context/package",
+            "https://agent-memory-api-bix5.onrender.com/api/recall/compress",
+            "https://agent-memory-api-bix5.onrender.com/api/recall/extract",
+            "https://agent-memory-api-bix5.onrender.com/api/memory/delete",
+            "https://agent-memory-api-bix5.onrender.com/api/memory/audit"
+        ],
+        "ownershipProofs": [
+            "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+        ],
+        "instructions": "Encrypted Japanese AI agent memory API with AES-256 encryption and audit trail."
     }
 
 @app.post("/api/memory/store", response_model=StoreMemoryResponse)
