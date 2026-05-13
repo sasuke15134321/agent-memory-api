@@ -58,13 +58,17 @@ async def x402_payment_middleware(request: Request, call_next):
     price = _PAID_ENDPOINTS.get((request.method, request.url.path))
     if not TEST_MODE and price is not None:
         if not request.headers.get("X-PAYMENT"):
+            max_amount = str(round(float(price) * 1_000_000))
             return JSONResponse(status_code=402, content={
-                "error": "Payment Required",
-                "price": price,
-                "currency": "USDC",
-                "network": "base-mainnet",
-                "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE",
-                "endpoint": request.url.path
+                "x402Version": 1,
+                "accepts": [{
+                    "scheme": "exact",
+                    "network": "eip155:8453",
+                    "maxAmountRequired": max_amount,
+                    "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                    "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                }],
+                "error": "Payment required"
             })
     return await call_next(request)
 
@@ -421,16 +425,12 @@ async def store_memory(request: StoreMemoryRequest, http_request: Request):
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "50000",  # 0.05 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Agent Memory Storage - AIエージェント記憶保存",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "50000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -474,16 +474,12 @@ async def recall_memory(request: RecallMemoryRequest, http_request: Request):
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "30000",  # 0.03 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Agent Memory Recall - 記憶検索・想起",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "30000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -526,16 +522,12 @@ async def verify_trust(request: VerifyTrustRequest, http_request: Request):
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "200000",  # 0.20 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Trust Verification - 信頼性検証・幻覚検出",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "200000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -577,16 +569,12 @@ async def package_context(request: PackageContextRequest, http_request: Request)
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "100000",  # 0.10 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Context Packaging - 文脈引き継ぎパッケージ作成",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "100000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -628,16 +616,12 @@ async def compress_content(request: CompressContentRequest, http_request: Reques
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "50000",  # 0.05 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Content Compression - 会話ログ圧縮・重要決定事項抽出",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "50000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -680,16 +664,12 @@ async def extract_content(request: ExtractContentRequest, http_request: Request)
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "30000",  # 0.03 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Information Extraction - テキスト情報抽出",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "30000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -729,16 +709,12 @@ async def delete_memory(request: DeleteMemoryRequest, http_request: Request):
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "30000",  # 0.03 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Memory Deletion Proof - 記憶削除証跡",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "30000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
@@ -772,16 +748,12 @@ async def get_audit_log(http_request: Request, agent_id: Optional[str] = None, l
                     "x402Version": 1,
                     "accepts": [{
                         "scheme": "exact",
-                        "network": "base",
-                        "maxAmountRequired": "50000",  # 0.05 USDC
-                        "resource": f"{http_request.url}",
-                        "description": "Memory Audit Log - 監査ログ",
-                        "mimeType": "application/json",
-                        "payTo": WALLET_ADDRESS,
-                        "maxTimeoutSeconds": 300,
+                        "network": "eip155:8453",
+                        "maxAmountRequired": "50000",
                         "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                        "extra": {"name": "USDC", "version": "2"}
-                    }]
+                        "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
+                    }],
+                    "error": "Payment required"
                 }
             )
 
