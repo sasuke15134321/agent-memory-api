@@ -391,6 +391,22 @@ async def x402_discovery():
         ]
     }
 
+@app.get("/.well-known/x402")
+async def x402_discovery_manifest():
+    return {
+        "version": 1,
+        "resources": [
+            "POST /api/memory/store",
+            "POST /api/memory/recall",
+            "POST /api/trust/verify",
+            "POST /api/context/package",
+            "POST /api/recall/compress",
+            "POST /api/recall/extract",
+            "POST /api/memory/delete",
+            "GET /api/memory/audit"
+        ]
+    }
+
 @app.post("/api/memory/store", response_model=StoreMemoryResponse)
 async def store_memory(request: StoreMemoryRequest, http_request: Request):
     """Store agent memory with x402 payment verification"""
