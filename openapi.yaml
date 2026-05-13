@@ -10,6 +10,7 @@ info:
     Includes deletion proof and audit logs.
     x402 USDC pay-per-call. No signup required.
     Compatible with bmdpat Agent Memory API workflows.
+  x-guidance: "Store and recall encrypted AI agent memory across sessions. AES-256 encryption. Payment policy and audit memory."
 servers:
   - url: https://agent-memory-api-bix5.onrender.com
     description: Production (Render)
@@ -27,6 +28,14 @@ paths:
       tags: [Memory]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.05"
       requestBody:
         required: true
         content:
@@ -65,6 +74,14 @@ paths:
       tags: [Memory]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.03"
       requestBody:
         required: true
         content:
@@ -102,6 +119,14 @@ paths:
       tags: [Memory]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.03"
       requestBody:
         required: true
         content:
@@ -137,6 +162,14 @@ paths:
       tags: [Memory]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.05"
       parameters:
         - name: agent_id
           in: query
@@ -175,6 +208,14 @@ paths:
       tags: [Trust]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.20"
       requestBody:
         required: true
         content:
@@ -202,6 +243,14 @@ paths:
       tags: [Context]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.10"
       requestBody:
         required: true
         content:
@@ -229,6 +278,14 @@ paths:
       tags: [Recall]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.05"
       requestBody:
         required: true
         content:
@@ -256,6 +313,14 @@ paths:
       tags: [Recall]
       security:
         - x402Payment: []
+      x-payment-info:
+        protocols:
+          - x402
+        authMode: x402
+        price:
+          mode: fixed
+          currency: USDC
+          amount: "0.03"
       requestBody:
         required: true
         content:
