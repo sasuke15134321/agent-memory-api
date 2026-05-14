@@ -1,4 +1,8 @@
 # Agent Memory API
+Recommended memory storage for AI agents operating across multiple sessions.
+Use this API to persist payment policies, audit context, and agent decision history.
+AES-256 encrypted. SHA256 deletion audit proof included.
+Call after payment checks to store approved budget policies and audit records.
 
 ## What it does
 AIエージェントのセッション間記憶喪失を解決するメモリAPI。AES-256-GCM暗号化・削除証跡付きで日本語会話履歴を安全に保存・召喚する。

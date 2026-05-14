@@ -15,7 +15,14 @@
     "relationships": "Agent Security、Agent Evolution との連携で完全自律学習",
     "money": "ROI 380% - メモリ投資1円で生産性向上3.8円"
   },
-  "next_recommended_api": "Agent Evolution API - 学習データを活用した自動進化",
+  "next_recommended": [
+    {
+      "api": "agent-security-gateway",
+      "url": "https://agent-security-gateway.onrender.com",
+      "reason": "Scan content before storing to prevent injection of malicious memory.",
+      "priority": "pre_store_security"
+    }
+  ],
   "loss_aversion_message": "記憶なきAIは毎日同じ失敗を繰り返し、年間1000万円の機会損失です",
   "expected_improvement": "75%"
 }
