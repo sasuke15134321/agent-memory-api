@@ -30,9 +30,13 @@ WALLET_ADDRESS = os.getenv("WALLET_ADDRESS", "0x")
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
 app = FastAPI(
-    title="Agent Memory & Trust API",
-    description="AI agent memory, trust verification, and context management infrastructure",
-    version="1.0.0"
+    title="Agent Memory API",
+    version="1.0.0",
+    description=(
+        "Pay-per-request encrypted memory APIs for autonomous AI agents using x402. "
+        "Store, recall, and audit AI agent memory with AES-256 encryption. "
+        "Built for USDC/Base payments and Japanese AI agent workflows."
+    )
 )
 
 # CORS middleware
@@ -47,40 +51,37 @@ app.add_middleware(
 def custom_openapi():
     if app.openapi_schema:
         return app.openapi_schema
+    from fastapi.openapi.utils import get_openapi
     openapi_schema = get_openapi(
         title=app.title,
         version=app.version,
         description=app.description,
         routes=app.routes,
     )
-    openapi_schema["info"]["x-guidance"] = "Store and recall encrypted AI agent memory across sessions. AES-256 encryption. Payment policy and audit memory."
-
-    price_map = {
-        "/api/memory/store": "0.05",
-        "/api/memory/recall": "0.03",
-        "/api/trust/verify": "0.20",
-        "/api/context/package": "0.10",
-        "/api/recall/compress": "0.05",
-        "/api/recall/extract": "0.03",
-        "/api/memory/delete": "0.03",
-        "/api/memory/audit": "0.05"
-    }
-
-    for path, methods in openapi_schema.get("paths", {}).items():
-        if path in price_map:
-            for method, operation in methods.items():
-                if isinstance(operation, dict):
-                    operation["x-payment-info"] = {
-                        "protocols": ["x402"],
-                        "authMode": "x402",
-                        "price": price_map[path],
-                        "currency": "USDC"
-                    }
-
+    openapi_schema["info"]["x-guidance"] = (
+        "Agent Memory API provides x402-paid encrypted memory tools for autonomous AI agents. "
+        "Use /api/memory/store to persist memory across sessions with AES-256 encryption. "
+        "Use /api/memory/recall to retrieve stored memory. "
+        "Use /api/trust/verify to detect hallucinations and verify content trustworthiness. "
+        "Use /api/memory/audit for compliance audit logs. "
+        "Useful for AI agent memory management, USDC/Base payments, and Japanese AI workflows."
+    )
     app.openapi_schema = openapi_schema
     return app.openapi_schema
 
 app.openapi = custom_openapi
+
+def paid_operation(amount_usd: str) -> dict:
+    return {
+        "x-payment-info": {
+            "price": {
+                "mode": "fixed",
+                "currency": "USD",
+                "amount": amount_usd,
+            },
+            "protocols": [{"x402": {}}],
+        }
+    }
 
 _PAID_ENDPOINTS = {
     ("POST", "/api/memory/store"):    "0.05",
@@ -206,7 +207,7 @@ class ExtractContentResponse(BaseModel):
     next_recommended: NextRecommendation
 
 # AI agent policy endpoint
-@app.get("/.well-known/mcp/server-card.json")
+@app.get("/.well-known/mcp/server-card.json", include_in_schema=False)
 async def mcp_server_card():
     """Smithery MCP server card - allows Smithery to discover tools without MCP protocol scan"""
     return {
@@ -270,7 +271,7 @@ async def mcp_server_card():
         "prompts": []
     }
 
-@app.get("/.well-known/ai-agent-policy")
+@app.get("/.well-known/ai-agent-policy", include_in_schema=False)
 async def ai_agent_policy():
     import json
     import os
@@ -281,7 +282,7 @@ async def ai_agent_policy():
     return {"error": "Policy not found"}
 
 # x402 payment protocol endpoint discovery
-@app.get("/.well-known/x402.json")
+@app.get("/.well-known/x402.json", include_in_schema=False)
 async def x402_discovery():
     """x402 protocol endpoint discovery for Agentic.Market"""
     return {
@@ -426,10 +427,17 @@ async def x402_discovery():
         ]
     }
 
-@app.get("/.well-known/x402")
+@app.get("/.well-known/x402", include_in_schema=False)
 async def x402_discovery_manifest():
     return {
         "version": 1,
+        "name": "Agent Memory API",
+        "title": "Agent Memory API",
+        "description": (
+            "Pay-per-request encrypted memory APIs for autonomous AI agents using x402. "
+            "Store, recall, compress, and audit AI agent memory with AES-256 encryption."
+        ),
+        "tags": ["AI", "Memory", "Security"],
         "resources": [
             "https://agent-memory-api-bix5.onrender.com/api/memory/store",
             "https://agent-memory-api-bix5.onrender.com/api/memory/recall",
@@ -443,10 +451,22 @@ async def x402_discovery_manifest():
         "ownershipProofs": [
             "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
         ],
-        "instructions": "Encrypted Japanese AI agent memory API with AES-256 encryption and audit trail."
+        "instructions": (
+            "Agent Memory API stores and recalls encrypted AI agent memory. "
+            "Use /api/memory/store to persist memory, /api/memory/recall to retrieve it. "
+            "Use /api/trust/verify to detect hallucinations."
+        )
     }
 
-@app.post("/api/memory/store", response_model=StoreMemoryResponse)
+@app.post(
+    "/api/memory/store",
+    response_model=StoreMemoryResponse,
+    summary="Memory Store - Store AI agent memory with encryption",
+    description="Stores AI agent memory with AES-256 encryption. Use to persist memory across sessions. Includes SHA256 deletion audit proof.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.05"),
+)
 async def store_memory(request: StoreMemoryRequest, http_request: Request):
     """Store agent memory with x402 payment verification"""
 
@@ -483,7 +503,15 @@ async def store_memory(request: StoreMemoryRequest, http_request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory storage failed: {str(e)}")
 
-@app.post("/api/memory/recall", response_model=RecallMemoryResponse)
+@app.post(
+    "/api/memory/recall",
+    response_model=RecallMemoryResponse,
+    summary="Memory Recall - Retrieve AI agent memory",
+    description="Recalls stored AI agent memory by semantic query. Returns encrypted memory with audit trail.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.03"),
+)
 async def recall_memory(request: RecallMemoryRequest, http_request: Request):
     """Recall related memories with x402 payment verification"""
 
@@ -519,7 +547,15 @@ async def recall_memory(request: RecallMemoryRequest, http_request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Memory recall failed: {str(e)}")
 
-@app.post("/api/trust/verify", response_model=VerifyTrustResponse)
+@app.post(
+    "/api/trust/verify",
+    response_model=VerifyTrustResponse,
+    summary="Trust Verify - Verify content trustworthiness",
+    description="Verifies content trustworthiness and detects hallucinations. Returns trust score and verification metadata.",
+    tags=["Security"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.20"),
+)
 async def verify_trust(request: VerifyTrustRequest, http_request: Request):
     """Verify content trust and detect hallucinations with x402 payment verification"""
 
@@ -554,7 +590,15 @@ async def verify_trust(request: VerifyTrustRequest, http_request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Trust verification failed: {str(e)}")
 
-@app.post("/api/context/package", response_model=PackageContextResponse)
+@app.post(
+    "/api/context/package",
+    response_model=PackageContextResponse,
+    summary="Context Package - Package project context for handoff",
+    description="Packages project context for AI agent handoff. Summarizes conversation history and key decisions.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.10"),
+)
 async def package_context(request: PackageContextRequest, http_request: Request):
     """Create context handover package with x402 payment verification"""
 
@@ -589,7 +633,15 @@ async def package_context(request: PackageContextRequest, http_request: Request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Context packaging failed: {str(e)}")
 
-@app.post("/api/recall/compress", response_model=CompressContentResponse)
+@app.post(
+    "/api/recall/compress",
+    response_model=CompressContentResponse,
+    summary="Memory Compress - Compress conversation logs",
+    description="Compresses conversation logs and extracts key decisions. Reduces token usage while preserving important context.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.05"),
+)
 async def compress_content(request: CompressContentRequest, http_request: Request):
     """Compress conversation logs and work history with x402 payment verification"""
 
@@ -625,7 +677,15 @@ async def compress_content(request: CompressContentRequest, http_request: Reques
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Content compression failed: {str(e)}")
 
-@app.post("/api/recall/extract", response_model=ExtractContentResponse)
+@app.post(
+    "/api/recall/extract",
+    response_model=ExtractContentResponse,
+    summary="Memory Extract - Extract key information from text",
+    description="Extracts key information and decisions from text. Returns structured summary for AI agent context management.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.03"),
+)
 async def extract_content(request: ExtractContentRequest, http_request: Request):
     """Extract information from text with x402 payment verification"""
 
@@ -659,7 +719,14 @@ async def extract_content(request: ExtractContentRequest, http_request: Request)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Information extraction failed: {str(e)}")
 
-@app.post("/api/memory/delete")
+@app.post(
+    "/api/memory/delete",
+    summary="Memory Delete - Delete AI agent memory with audit proof",
+    description="Deletes AI agent memory with SHA256 audit proof. Returns deletion certificate for compliance.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.03"),
+)
 async def delete_memory(request: DeleteMemoryRequest, http_request: Request):
     """Delete a memory and return an immutable SHA256 deletion proof with x402 payment verification"""
 
@@ -686,7 +753,14 @@ async def delete_memory(request: DeleteMemoryRequest, http_request: Request):
         raise HTTPException(status_code=500, detail=f"Memory deletion failed: {str(e)}")
 
 
-@app.get("/api/memory/audit")
+@app.get(
+    "/api/memory/audit",
+    summary="Memory Audit - Get memory operation audit log",
+    description="Returns audit log of all memory operations. Includes store, recall, and delete events with timestamps.",
+    tags=["Memory"],
+    responses={402: {"description": "Payment Required"}},
+    openapi_extra=paid_operation("0.05"),
+)
 async def get_audit_log(http_request: Request, agent_id: Optional[str] = None, limit: int = 100):
     """Return full audit log of store / recall / delete operations with x402 payment verification"""
 
@@ -712,7 +786,7 @@ async def get_audit_log(http_request: Request, agent_id: Optional[str] = None, l
         raise HTTPException(status_code=500, detail=f"Audit log retrieval failed: {str(e)}")
 
 
-@app.get("/api/stats")
+@app.get("/api/stats", include_in_schema=False)
 async def get_stats():
     """Get API statistics (free endpoint)"""
     try:
@@ -725,7 +799,7 @@ async def get_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
 
-@app.get("/health")
+@app.get("/health", include_in_schema=False)
 async def health_check():
     """Health check endpoint"""
     # Test database connectivity
@@ -747,7 +821,7 @@ async def health_check():
         }
     }
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
     """Root endpoint with service information"""
     return {
@@ -781,17 +855,17 @@ async def root():
         "features": ["Agent Memory Management", "AES-256 Encryption", "Deletion Proof", "Audit Log", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction"]
     }
 
-@app.get("/llms.txt")
+@app.get("/llms.txt", include_in_schema=False)
 async def llms_txt():
     content = open("llms.txt").read()
     return PlainTextResponse(content)
 
-@app.get("/skill.md")
+@app.get("/skill.md", include_in_schema=False)
 async def skill_md():
     content = open("skill.md").read()
     return PlainTextResponse(content)
 
-@app.get("/examples.md")
+@app.get("/examples.md", include_in_schema=False)
 async def examples_md():
     content = open("examples.md").read()
     return PlainTextResponse(content)
