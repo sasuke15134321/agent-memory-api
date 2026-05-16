@@ -1,23 +1,52 @@
 # Agent Memory System - AI学習革命プラットフォーム
 
+## AEO-ready for AI agents
+This API is designed to be understandable and callable by AI agents.
+It includes structured information for:
+- what this API does
+- when an AI agent should call this API
+- when not to use this API
+- best used before / after
+- example request / response
+- next_recommended
+
+## Why this matters
+AI is moving from answering questions to managing real workflows.
+Personal finance is an early example: AI can help users understand spending, subscriptions, investments, and budgets based on connected financial data.
+The next layer is not only human spending management, but also spending, safety, memory, and audit control for AI agents themselves.
+As AI agents begin to call paid APIs, use x402 payments, store long-term memory, and interact with other agents, they need structured guardrails before and after execution.
+This API is part of an AI Agent Payment Safety Stack.
+
 ## What this API does
-AIエージェントのセッション間で、支払いポリシー・監査文脈・判断履歴を暗号化保存するAPIです。
+AIエージェントのセッション間で、支払いポリシー・監査文脈・判断履歴をAES-256暗号化で保存するAPIです。
 
 ## When an AI agent should call this API
 支払いチェック完了後、または複数セッションにまたがる業務を実行する際に呼び出してください。
-AES-256暗号化・SHA256削除証跡付きです。
+
+## When not to use this API
+- 一時的な作業メモリの保存（セッション内で完結する場合）
+- 機密情報を暗号化なしで保存したい場合
+
+## Best used before
+- multi-session agent handoff
+- audit log finalization
 
 ## Best used after
-- budget check
-- security scan
-- x402 payment
-- audit-required action
+- agent-budget-guard budget check
+- agent-security-gateway security scan
+- x402 payment completion
 
 ## Output
 - memory_id
 - stored / recalled
 - audit_log
 - deletion_proof
+- next_recommended
+
+## Related APIs
+- Agent Security Gateway: scan before memory store
+- Agent Budget Guard: budget context to store
+- Agent Evolution Engine: orchestrate memory in full flow
 
 ## Japanese Agent Trust Layer
 
