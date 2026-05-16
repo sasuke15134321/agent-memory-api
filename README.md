@@ -12,19 +12,22 @@ It includes structured information for:
 
 ## Why this matters
 AI is moving from answering questions to managing real workflows.
-Personal finance is an early example: AI can help users understand spending, subscriptions, investments, and budgets based on connected financial data.
-The next layer is not only human spending management, but also spending, safety, memory, and audit control for AI agents themselves.
 As AI agents begin to call paid APIs, use x402 payments, store long-term memory, and interact with other agents, they need structured guardrails before and after execution.
-This API is part of an AI Agent Payment Safety Stack.
+This API is part of an AI Agent Payment Safety Stack designed to run as a pre/post-execution control layer on Arc and other agent economies.
+
+## Arc compatibility
+Designed to run as a pre-execution control layer before ERC-8183 job funding on Arc testnet.
+Call this API before an AI agent funds or executes a job contract on Arc.
+Compatible with AI agents using USDC, JPYC, x402, or Arc-style payment flows.
 
 ## What this API does
 AIエージェントのセッション間で、支払いポリシー・監査文脈・判断履歴をAES-256暗号化で保存するAPIです。
 
 ## When an AI agent should call this API
-支払いチェック完了後、または複数セッションにまたがる業務を実行する際に呼び出してください。
+Arc上のERC-8183 job完了後、またはx402決済完了後に監査ログを保存するために呼び出してください。
 
 ## When not to use this API
-- 一時的な作業メモリの保存（セッション内で完結する場合）
+- 一時的な作業メモリの保存
 - 機密情報を暗号化なしで保存したい場合
 
 ## Best used before
@@ -32,9 +35,9 @@ AIエージェントのセッション間で、支払いポリシー・監査文
 - audit log finalization
 
 ## Best used after
-- agent-budget-guard budget check
-- agent-security-gateway security scan
+- ERC-8183 job settlement on Arc
 - x402 payment completion
+- agent-budget-guard check
 
 ## Output
 - memory_id
@@ -44,9 +47,9 @@ AIエージェントのセッション間で、支払いポリシー・監査文
 - next_recommended
 
 ## Related APIs
-- Agent Security Gateway: scan before memory store
-- Agent Budget Guard: budget context to store
-- Agent Evolution Engine: orchestrate memory in full flow
+- Agent Security Gateway
+- Agent Budget Guard
+- Agent Evolution Engine
 
 ## Japanese Agent Trust Layer
 
