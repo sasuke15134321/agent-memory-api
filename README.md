@@ -1,5 +1,24 @@
 # Agent Memory System - AI学習革命プラットフォーム
 
+## What this API does
+AIエージェントのセッション間で、支払いポリシー・監査文脈・判断履歴を暗号化保存するAPIです。
+
+## When an AI agent should call this API
+支払いチェック完了後、または複数セッションにまたがる業務を実行する際に呼び出してください。
+AES-256暗号化・SHA256削除証跡付きです。
+
+## Best used after
+- budget check
+- security scan
+- x402 payment
+- audit-required action
+
+## Output
+- memory_id
+- stored / recalled
+- audit_log
+- deletion_proof
+
 ## Japanese Agent Trust Layer
 
 このAPIは「Japanese Agent Trust Layer」の一部です。
