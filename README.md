@@ -26,8 +26,8 @@ As AI agents begin to call paid APIs, use x402 payments, store long-term memory,
 This API is part of an AI Agent Payment Safety Stack designed to run as a pre/post-execution control layer on Arc and other agent economies.
 
 ## Arc compatibility
-Designed to run as a pre-execution control layer before ERC-8183 job funding on Arc testnet.
-Call this API before an AI agent funds or executes a job contract on Arc.
+Designed to run as a post-execution audit and memory storage layer after ERC-8183 job funding on Arc testnet.
+Call this API after an AI agent funds or executes a job contract on Arc.
 Compatible with AI agents using USDC, JPYC, x402, or Arc-style payment flows.
 
 ## What this API does
