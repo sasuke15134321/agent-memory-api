@@ -94,13 +94,61 @@ _PAID_ENDPOINTS = {
     ("GET",  "/api/memory/audit"):    "0.05",
 }
 
+# CDP Bazaar indexing extension for /api/memory/store
+_BAZAAR_EXTENSIONS = {
+    "bazaar": {
+        "info": {
+            "input": {
+                "type": "http",
+                "method": "POST",
+                "bodyType": "json",
+                "body": {
+                    "agent_id": "agent_001",
+                    "memory_type": "session",
+                    "content": "User approved budget check. Proceed with payment.",
+                    "ttl_seconds": 86400
+                }
+            },
+            "output": {
+                "type": "json",
+                "example": {
+                    "stored": True,
+                    "memory_id": "mem_abc123",
+                    "audit_log_id": "audit_xyz456",
+                    "next_recommended": "proceed_with_recall"
+                }
+            }
+        },
+        "schema": {
+            "type": "object",
+            "properties": {
+                "stored": {"type": "boolean"},
+                "memory_id": {"type": "string"},
+                "audit_log_id": {"type": "string"},
+                "next_recommended": {"type": "string"}
+            }
+        }
+    }
+}
+
 @app.middleware("http")
 async def x402_payment_middleware(request: Request, call_next):
-    price = _PAID_ENDPOINTS.get((request.method, request.url.path))
+    path = request.url.path
+    price = _PAID_ENDPOINTS.get((request.method, path))
     if not TEST_MODE and price is not None:
         if not request.headers.get("X-PAYMENT"):
             max_amount = str(round(float(price) * 1_000_000))
-            _pc = {"x402Version": 2, "accepts": [{"scheme": "exact", "network": "eip155:8453", "amount": max_amount, "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE", "maxTimeoutSeconds": 300, "resource": {"method": request.method, "mimeType": "application/json"}}], "error": "Payment required"}
+            _pc = {
+                "x402Version": 2,
+                "error": "Payment required",
+                "accepts": [{"scheme": "exact", "network": "eip155:8453", "amount": max_amount, "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE", "maxTimeoutSeconds": 300, "resource": {"method": request.method, "mimeType": "application/json"}}],
+            }
+            if path == "/api/memory/store":
+                _pc["extensions"] = _BAZAAR_EXTENSIONS
+                _pc["stored"] = False
+                _pc["memory_id"] = None
+                _pc["audit_log_id"] = None
+                _pc["next_recommended"] = "complete_x402_payment"
             return JSONResponse(status_code=402, content=_pc, headers={"PAYMENT-REQUIRED": base64.b64encode(json.dumps(_pc).encode()).decode()})
     return await call_next(request)
 
