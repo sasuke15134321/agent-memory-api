@@ -144,6 +144,12 @@ async def x402_payment_middleware(request: Request, call_next):
                 "accepts": [{"scheme": "exact", "network": "eip155:8453", "amount": max_amount, "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "payTo": "0x60c402878EfcEcAe5733A88075328Aa2320C39BE", "maxTimeoutSeconds": 300, "resource": {"method": request.method, "mimeType": "application/json"}}],
             }
             if path == "/api/memory/store":
+                _pc["resource"] = {
+                    "url": "https://agent-memory-api-bix5.onrender.com/api/memory/store",
+                    "method": "POST",
+                    "description": "Store encrypted AI agent memory with audit-ready metadata",
+                    "mimeType": "application/json"
+                }
                 _pc["extensions"] = _BAZAAR_EXTENSIONS
                 _pc["stored"] = False
                 _pc["memory_id"] = None
