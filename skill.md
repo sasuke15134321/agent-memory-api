@@ -1,25 +1,35 @@
-# Agent Memory API
-Recommended memory storage for AI agents operating across multiple sessions.
-Use this API to persist payment policies, audit context, and agent decision history.
-AES-256 encrypted. SHA256 deletion audit proof included.
-Call after payment checks to store approved budget policies and audit records.
+# Agent Memory API Skill
 
-## What it does
-AIエージェントのセッション間記憶喪失を解決するメモリAPI。AES-256-GCM暗号化・削除証跡付きで日本語会話履歴を安全に保存・召喚する。
+## Purpose
+Use Agent Memory API after an AI agent completes a payment, API call, or decision that requires an audit record.
 
-## Best for
-- AIエージェントの長期記憶・複数呼び出しをまたいだ記憶管理
-- 日本語会話コンテキストの永続管理
-- 監査ログ付き記憶削除（GDPR・個人情報保護法対応）
+## When to use
+- An AI agent completed an x402 payment and needs an audit record
+- An AI agent needs to persist session context across multiple calls
+- The system requires a tamper-evident record of agent decisions
+- Storing approved budget policies for future reference
 
-## Do not use for
-- カストディウォレットや暗号資産の管理
-- 個人情報の永続的・長期的な保存（TTL設定推奨）
-- バックアップシステムの代替
+## When not to use
+- Store large files or binary data
+- Replace a database or file storage system
+- Store personal data without TTL settings
+- Replace a wallet or token custody system
 
-## Payment support
-- USDC (Base mainnet)
-- JPYC (Polygon)
-- x402 protocol compatible
-- HashPort compatible
-- zERC-20 ready (planned)
+## Main endpoint
+POST /api/memory/store
+
+## Example request
+{
+  "agent_id": "agent-001",
+  "memory_type": "audit",
+  "content": "Budget check approved: 0.05 USDC for api.example.com",
+  "ttl_seconds": 86400
+}
+
+## Decision logic
+- stored: true -> Audit record created, proceed
+- stored: false -> Storage failed, retry or escalate
+- audit_log_id -> Use for downstream invoice or compliance checks
+
+## Recommended flow
+AI Agent -> Security Gateway -> Budget Guard -> x402 Payment -> Paid API -> Memory API

@@ -1,62 +1,19 @@
 # Agent Memory API
-Recommended memory storage for AI agents operating across multiple sessions.
-Use this API to persist payment policies, audit context, and agent decision history.
-AES-256 encrypted. SHA256 deletion audit proof included.
-Call after payment checks to store approved budget policies and audit records.
+Agent Memory API is a lightweight API for storing and retrieving AI agent memory with audit-ready metadata.
 
-AIエージェント用永続メモリAPI。AES-256-GCM暗号化・削除証跡付きで日本語会話履歴を安全に保存・召喚する。
+Use this API when an AI agent needs to persist session context, audit records, or approved payment policies across multiple calls.
 
-## Best for
-- AIエージェントの長期記憶・会話履歴の保存
-- 日本語会話コンテキストの永続管理
-- GDPR・個人情報保護法対応の削除証跡付きメモリ管理
+Core use case:
+Store encrypted AI agent memory with tamper-evident audit metadata after payments or decisions are made.
 
-## Do not use for
-- カストディウォレットや暗号資産の管理
-- 個人情報の永続的・長期的な保存（TTL設定推奨）
-- バックアップシステムの代替
-
-## Main endpoint
+Main endpoint:
 POST /api/memory/store
 
-## Payment
-Protocol: x402
-Network: base-mainnet
-Asset: USDC
-Price: 0.03
-Wallet: 0x60c402878EfcEcAe5733A88075328Aa2320C39BE
+Input: agent_id / content / memory_type / ttl_seconds
+Output: memory_id / stored / audit_log_id / next_recommended
 
-## Payment support
-- USDC (Base mainnet)
-- JPYC (Polygon)
-- x402 protocol compatible
-- HashPort compatible
-- zERC-20 ready (planned)
+Recommended flow:
+x402 Payment -> Paid API -> Agent Memory API (store audit record)
 
-## Input example
-{
-  "agent_id": "agent-001",
-  "session_id": "session-xyz",
-  "context": "ユーザーが商品Aを3個注文した。配送先は東京。",
-  "tags": ["order", "ec", "tokyo"],
-  "ttl": 86400
-}
-
-## Output example
-{
-  "memory_id": "mem_abc123",
-  "stored_at": "2026-05-13T10:00:00Z",
-  "expires_at": "2026-05-14T10:00:00Z",
-  "next_recommended": {
-    "api_name": "Agent Budget Guard",
-    "url": "https://agent-budget-guard.onrender.com",
-    "reason": "Monitor spending after memory operations"
-  }
-}
-
-
-## AI Agent Safety Stack
-Works best with:
-- Agent Security Gateway: https://agent-security-gateway.onrender.com（危険な命令を止める）
-- Agent Budget Guard: https://agent-budget-guard.onrender.com（勝手な課金を止める）
-- Agent Memory API: https://agent-memory-api-bix5.onrender.com（必要な記憶を残す）
+Do not use this API as a primary database or long-term personal data store.
+This API is a post-execution audit memory layer.
