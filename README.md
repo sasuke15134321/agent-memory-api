@@ -1,5 +1,8 @@
 # Agent Memory API
 
+Store audit-ready memory after an AI agent makes a decision.
+Part of Agent Control Primitives — the missing audit memory layer in CDP Bazaar.
+
 A working prototype API for storing and retrieving AI agent memory records with audit-oriented metadata.
 
 ## Part of AI Agent Infrastructure Safety Stack
