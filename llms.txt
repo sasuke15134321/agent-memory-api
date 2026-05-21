@@ -17,3 +17,9 @@ x402 Payment -> Paid API -> Agent Memory API (store audit record)
 
 Do not use this API as a primary database or long-term personal data store.
 This API is a post-execution audit memory layer.
+
+## Note
+
+This API is part of Agent Control Primitives.
+Agent Control Primitives is not a payment rail, wallet, custodian, or x402 facilitator.
+It provides lightweight safety, budget, approval, context, and audit primitives around agent actions and payments.
