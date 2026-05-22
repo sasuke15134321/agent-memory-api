@@ -16,7 +16,7 @@ Use Agent Memory API after an AI agent completes a payment, API call, or decisio
 - Replace a wallet or token custody system
 
 ## Main endpoint
-POST /api/memory/store
+POST /api/memory/store (0.05 USDC)
 
 ## Example request
 {

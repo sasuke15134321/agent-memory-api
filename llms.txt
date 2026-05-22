@@ -7,7 +7,7 @@ Core use case:
 Store encrypted AI agent memory with tamper-evident audit metadata after payments or decisions are made.
 
 Main endpoint:
-POST /api/memory/store
+POST /api/memory/store (0.05 USDC)
 
 Input: agent_id / content / memory_type / ttl_seconds
 Output: memory_id / stored / audit_log_id / next_recommended
