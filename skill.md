@@ -33,3 +33,26 @@ POST /api/memory/store (0.05 USDC)
 
 ## Recommended flow
 AI Agent -> Security Gateway -> Budget Guard -> x402 Payment -> Paid API -> Memory API
+
+## Skill: Agent Action Atom
+
+### Use this when
+- memory write decision recording
+- memory access policy check
+- boundary enforcement for memory operations
+- audit evidence attachment for memory actions
+- fuse allow / block / escalate for sensitive memory writes
+- human approval for critical memory operations
+
+### Do not use this as
+- a payment protocol
+- a wallet or settlement layer
+- a legal liability engine
+- a compliance guarantee
+- an implemented API unless explicitly provided
+
+### Minimal record fields
+atom_id / actor / action / target / source / policy / meaning / state / proof / time / relation
+
+### Purpose
+Make one AI-agent memory operation externally explainable and auditable, especially for memory access control and audit flows.

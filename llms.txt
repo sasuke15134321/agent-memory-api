@@ -23,3 +23,23 @@ This API is a post-execution audit memory layer.
 This API is part of Agent Control Primitives.
 Agent Control Primitives is not a payment rail, wallet, custodian, or x402 facilitator.
 It provides lightweight safety, budget, approval, context, and audit primitives around agent actions and payments.
+
+## Agent Action Atom
+
+Agent Action Atom is a minimal external record unit for one AI-agent action.
+
+In the context of agent-memory-api, use it to record memory write decisions, memory access policy checks, boundary enforcement outcomes, and audit evidence for memory operations.
+
+Agent Action Atom is not a payment protocol, wallet, settlement layer, legal liability engine, or API endpoint by itself.
+
+Agent Action Atoms can be grouped into higher-level external control materials:
+- Payment Trace
+- Evidence Packet
+- Boundary Trace
+- Fuse Record
+- Human Approval Trail
+- Permission Record
+- Dispute Record
+- Liability Evidence
+
+Current status: private design concept, external control material, minimal record unit, not an API, not a protocol, not a standard.
