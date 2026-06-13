@@ -365,6 +365,33 @@ paths:
         '200':
           description: MCP server card
 
+  /api/memory-provenance-record/build:
+    post:
+      operationId: build_memory_provenance_record
+      summary: Build Memory Provenance Context Record (free, experimental, stateless)
+      description: >
+        Creates external control material for AI-agent memory and context usage.
+        Free, stateless, experimental. No x402 required. No DB storage.
+        Returns provenance_graph, state, risk_flags, context_usage, agent_action_atom.
+      tags: [Memory]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryProvenanceRecordBuildRequest'
+            example:
+              agent_id: "agent-001"
+              memory_layer: "session"
+              summary: "User approved budget policy for API calls"
+      responses:
+        '200':
+          description: Memory provenance record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryProvenanceRecordBuildResponse'
+
   /health:
     get:
       summary: Health check
@@ -569,3 +596,76 @@ components:
           example: "0x60c402878EfcEcAe5733A88075328Aa2320C39BE"
         endpoint:
           type: string
+
+    MemoryProvenanceRecordBuildRequest:
+      type: object
+      required: [agent_id]
+      properties:
+        agent_id:
+          type: string
+        context_id:
+          type: string
+        context_type:
+          type: string
+        memory_layer:
+          type: string
+          default: unknown
+        summary:
+          type: string
+        raw_sources:
+          type: array
+          items:
+            type: object
+        facts:
+          type: array
+          items:
+            type: object
+        state:
+          type: object
+        risk_flags:
+          type: object
+        context_usage:
+          type: object
+
+    MemoryProvenanceRecordBuildResponse:
+      type: object
+      properties:
+        memory_provenance_record_id:
+          type: string
+        record_type:
+          type: string
+          example: memory_provenance_context_record
+        status:
+          type: string
+          example: created
+        experimental:
+          type: boolean
+          example: true
+        stateless:
+          type: boolean
+          example: true
+        free_builder:
+          type: boolean
+          example: true
+        agent_id:
+          type: string
+        provenance_graph:
+          type: object
+        state:
+          type: object
+        risk_flags:
+          type: object
+        context_usage:
+          type: object
+        agent_action_atom:
+          type: object
+        can_feed_into:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+        non_goals:
+          type: array
+          items:
+            type: string

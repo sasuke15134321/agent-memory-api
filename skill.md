@@ -56,3 +56,52 @@ atom_id / actor / action / target / source / policy / meaning / state / proof / 
 
 ### Purpose
 Make one AI-agent memory operation externally explainable and auditable, especially for memory access control and audit flows.
+
+---
+
+## Skill: Memory Provenance Context Record Builder
+
+Memory Provenance Context Record Builder is a free experimental stateless builder that creates external control material for AI-agent memory and context usage.
+
+### Use this when
+- an AI agent needs to know whether a memory or context item can be used
+- an AI agent needs source-of-truth context before payment or tool decisions
+- a developer needs external provenance material for AI-agent memory usage
+- a system needs a context state record that can feed into Tool Permission Policy, Spending Policy, Payment Action Record, and Evidence Packet workflows
+
+### It can describe
+- raw sources
+- extracted facts
+- profile or context summary
+- memory layer
+- context state / use rule / evidence / last_checked
+- freshness requirement
+- risk flags
+- Atom-compatible action reference
+
+### Endpoint
+POST /api/memory-provenance-record/build (free, no x402 required)
+
+### Output
+memory_provenance_record_id / provenance_graph / state / risk_flags / context_usage / agent_action_atom / can_feed_into / created_at / non_goals
+
+### Can feed into
+- Tool Permission Policy
+- Agent Spending Policy
+- Budget Check
+- Agent Action Atom
+- Agent Payment Action Record
+- Payment Control Evidence Packet
+- Decision Cost Trace
+- Memory Provenance Graph
+- Token Placement Governance
+
+### Do not use this as
+- a memory store
+- a vector database
+- a model provider
+- a payment protocol
+- a wallet
+- a settlement layer
+- a legal compliance system
+- an official standard

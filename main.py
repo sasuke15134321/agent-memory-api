@@ -6,10 +6,11 @@ FastAPI server with x402 payment protocol for AI agent memory, trust, and contex
 """
 
 import os
+import uuid
 from fastapi import FastAPI, Request, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import json
 import base64
@@ -259,6 +260,48 @@ class ExtractContentResponse(BaseModel):
     confidence_scores: List[float]
     source_locations: List[str]
     next_recommended: NextRecommendation
+
+# Memory Provenance Context Record Builder models
+class MemoryRawSourceInput(BaseModel):
+    source_id: Optional[str] = Field(default=None)
+    source_type: Optional[str] = Field(default=None)
+    description: Optional[str] = Field(default=None)
+
+class MemoryFactInput(BaseModel):
+    fact_id: Optional[str] = Field(default=None)
+    statement: Optional[str] = Field(default=None)
+    supported_by: Optional[List[str]] = Field(default=None)
+
+class MemoryStateInput(BaseModel):
+    status: Optional[str] = Field(default="unknown")
+    use_rule: Optional[str] = Field(default="Do not use for payment or tool decisions until verified.")
+    freshness_required: Optional[bool] = Field(default=True)
+    last_checked: Optional[str] = Field(default=None)
+    evidence: Optional[str] = Field(default="not_provided")
+
+class MemoryRiskFlagsInput(BaseModel):
+    stale_context_possible: Optional[bool] = Field(default=True)
+    payment_decision_sensitive: Optional[bool] = Field(default=True)
+    tool_permission_sensitive: Optional[bool] = Field(default=True)
+    requires_source_of_truth: Optional[bool] = Field(default=True)
+
+class MemoryContextUsageInput(BaseModel):
+    used_for_payment_decision: Optional[bool] = Field(default=False)
+    used_for_tool_permission: Optional[bool] = Field(default=False)
+    used_for_spending_policy: Optional[bool] = Field(default=False)
+    used_for_memory_scope_policy: Optional[bool] = Field(default=False)
+
+class MemoryProvenanceRecordBuildRequest(BaseModel):
+    agent_id: str
+    context_id: Optional[str] = Field(default=None)
+    context_type: Optional[str] = Field(default=None)
+    memory_layer: Optional[str] = Field(default="unknown")
+    summary: Optional[str] = Field(default=None)
+    raw_sources: Optional[List[MemoryRawSourceInput]] = Field(default=None)
+    facts: Optional[List[MemoryFactInput]] = Field(default=None)
+    state: Optional[MemoryStateInput] = Field(default=None)
+    risk_flags: Optional[MemoryRiskFlagsInput] = Field(default=None)
+    context_usage: Optional[MemoryContextUsageInput] = Field(default=None)
 
 # AI agent policy endpoint
 @app.get("/.well-known/mcp/server-card.json", include_in_schema=False)
@@ -860,6 +903,102 @@ async def get_stats():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
+
+@app.post("/api/memory-provenance-record/build", include_in_schema=False)
+async def build_memory_provenance_record(req: MemoryProvenanceRecordBuildRequest):
+    state = req.state or MemoryStateInput()
+    risk_flags = req.risk_flags or MemoryRiskFlagsInput()
+    context_usage = req.context_usage or MemoryContextUsageInput()
+    return {
+        "memory_provenance_record_id": f"memory_provenance_record_{uuid.uuid4()}",
+        "record_type": "memory_provenance_context_record",
+        "status": "created",
+        "experimental": True,
+        "stateless": True,
+        "free_builder": True,
+        "agent_id": req.agent_id,
+        "context_id": req.context_id,
+        "context_type": req.context_type,
+        "memory_layer": req.memory_layer,
+        "provenance_graph": {
+            "raw_sources": [s.model_dump() for s in req.raw_sources] if req.raw_sources else [],
+            "facts": [f.model_dump() for f in req.facts] if req.facts else [],
+            "profile_or_context_summary": req.summary
+        },
+        "state": state.model_dump(),
+        "risk_flags": risk_flags.model_dump(),
+        "context_usage": context_usage.model_dump(),
+        "agent_action_atom": {
+            "atom_type": "memory_provenance_record_created",
+            "action_type": "context_state_record_build",
+            "target": "agent_memory_or_context",
+            "audit_ready": True,
+            "includes": ["raw_sources", "facts", "profile_or_context_summary", "state", "risk_flags", "context_usage"],
+            "note": "Atom-compatible reference. This builder does not call the external Action Atom Builder."
+        },
+        "can_feed_into": [
+            "Tool Permission Policy",
+            "Agent Spending Policy",
+            "Budget Check",
+            "Agent Action Atom",
+            "Agent Payment Action Record",
+            "Payment Control Evidence Packet",
+            "Decision Cost Trace",
+            "Memory Provenance Graph",
+            "Token Placement Governance"
+        ],
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "non_goals": [
+            "not a memory store",
+            "not a vector database",
+            "not a model provider",
+            "not a payment protocol",
+            "not a wallet",
+            "not a settlement layer",
+            "not a legal compliance system",
+            "not an official standard"
+        ]
+    }
+
+
+@app.get("/.well-known/agent.json", include_in_schema=False)
+async def agent_json():
+    return {
+        "name": "Memory Provenance Context Record Builder",
+        "endpoint": "POST /api/memory-provenance-record/build",
+        "type": "experimental_stateless_builder",
+        "pricing": "free",
+        "x402_required": False,
+        "purpose": "Creates external control material for AI-agent memory and context usage, including raw sources, extracted facts, profile or context summary, state, use rule, evidence, last_checked, risk flags, and Atom-compatible reference.",
+        "use_when": [
+            "an AI agent needs to know whether a memory or context item can be used",
+            "an AI agent needs source-of-truth context before payment or tool decisions",
+            "a developer needs external provenance material for AI-agent memory usage",
+            "a system needs a context state record that can feed into Tool Permission Policy, Spending Policy, Payment Action Record, and Evidence Packet workflows"
+        ],
+        "can_feed_into": [
+            "Tool Permission Policy",
+            "Agent Spending Policy",
+            "Budget Check",
+            "Agent Action Atom",
+            "Agent Payment Action Record",
+            "Payment Control Evidence Packet",
+            "Decision Cost Trace",
+            "Memory Provenance Graph",
+            "Token Placement Governance"
+        ],
+        "non_goals": [
+            "not a memory store",
+            "not a vector database",
+            "not a model provider",
+            "not a payment protocol",
+            "not a wallet",
+            "not a settlement layer",
+            "not a legal compliance system",
+            "not an official standard"
+        ]
+    }
+
 
 @app.get("/health", include_in_schema=False)
 async def health_check():

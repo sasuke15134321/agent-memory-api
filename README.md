@@ -410,3 +410,27 @@ It can be used as a building block for:
 - Liability Evidence
 
 This repository treats Agent Action Atom as an external control material and minimal record unit for agent memory safety, access control, and audit flows.
+
+## Memory Provenance Context Record Builder
+
+Memory Provenance Context Record Builder is a free experimental stateless builder that creates external control material for AI-agent memory and context usage.
+
+Endpoint: `POST /api/memory-provenance-record/build` (free, no x402 required)
+
+It can describe:
+- raw sources
+- extracted facts
+- profile or context summary
+- memory layer
+- context state / use rule / evidence / last_checked
+- freshness requirement
+- risk flags
+- Atom-compatible action reference
+
+Use this when an AI agent needs to know whether a memory, project status, service status, or context item can be used for tool permission, spending policy, payment decision, or evidence packet workflows.
+
+The builder is free because it creates the provenance and state record structure only.
+
+Actual memory storage, recall, encryption, search, or verification remain handled by memory operation endpoints.
+
+It is not a memory store, not a vector database, not a model provider, not a payment protocol, not a wallet, not a settlement layer, not a legal compliance system, and not an official standard.
