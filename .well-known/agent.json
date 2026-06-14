@@ -1,0 +1,42 @@
+{
+  "name": "Agent Memory API",
+  "type": "memory_provenance",
+  "external_control_materials_map": {
+    "name": "External Control Materials Map v0.4",
+    "url": "https://ai-agent-payment-safety-stack.onrender.com/.well-known/external-control-materials.json",
+    "purpose": "AI-readable map showing how memory provenance, search result trust, tool permission, command execution, spending policy, budget checks, payment records, evidence packets, and payment evidence checks fit together.",
+    "version": "0.4"
+  },
+  "okf_style_bundle": {
+    "name": "External Control Materials Bundle v0.2",
+    "url": "https://ai-agent-payment-safety-stack.onrender.com/okf/index.md",
+    "purpose": "OKF-compatible Markdown documentation of 12 external control materials.",
+    "version": "0.2"
+  },
+  "role_in_flow": ["Memory Provenance Context Record (Step 1)", "Search Result Trust Check (Step 2 - trust gate)"],
+  "purpose": "Provides memory provenance records and search result trust verification for AI agents.",
+  "live_url": "https://agent-memory-api-bix5.onrender.com",
+  "core_gates": ["trust"],
+  "use_when": [
+    "an AI agent needs to verify the provenance of retrieved memory or context",
+    "a system needs to check if search results are trustworthy before use",
+    "an AI agent requires audit records for memory operations",
+    "a developer needs to track memory access patterns and policy enforcement"
+  ],
+  "capabilities": [
+    "memory provenance context records",
+    "search result trust verification",
+    "audit-ready memory storage",
+    "freshness checks",
+    "provenance tracking"
+  ],
+  "non_goals": [
+    "not a primary database",
+    "not a long-term personal data store",
+    "not a payment protocol",
+    "not a wallet",
+    "not a settlement layer",
+    "not a legal compliance system",
+    "not an official standard"
+  ]
+}

@@ -137,3 +137,30 @@ memory_provenance_record_id / provenance_graph / state / risk_flags / context_us
 - a settlement layer
 - a legal compliance system
 - an official standard
+
+---
+
+## Related External Control Materials
+
+This service is part of the External Control Materials flow for AI-agent memory provenance, trust, execution, payment decisions, and evidence workflows.
+
+Central AI-readable map:
+https://ai-agent-payment-safety-stack.onrender.com/.well-known/external-control-materials.json
+
+OKF-style markdown bundle:
+https://ai-agent-payment-safety-stack.onrender.com/okf/index.md
+
+Flow: Memory Provenance → Search Result Trust Check → Tool Approval → Payment Review → Evidence
+
+Related materials in the flow:
+- Search Result Trust Check (Step 2 - trust gate)
+- Tool Permission Policy (Step 3)
+- Tool Approval Check (Step 4 - execution gate)
+- Observability Data Boundary (Step 5)
+- Command Execution Gate (Step 6)
+- Agent Spending Policy (Step 7)
+- Payment Review (Step 8 - payment gate)
+- Budget Check (Step 9)
+- Agent Payment Action Record (Step 10)
+- Payment Control Evidence Packet (Step 11)
+- Payment Evidence Check (Step 12)

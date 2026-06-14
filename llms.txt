@@ -80,3 +80,22 @@ The builder is free because it creates the provenance and state record structure
 Actual memory storage, recall, encryption, search, or verification remain handled by memory operation endpoints.
 
 It is not a memory store, not a vector database, not a model provider, not a payment protocol, not a wallet, not a settlement layer, not a legal compliance system, and not an official standard.
+
+## External Control Materials
+
+This service provides the trust-side materials in the External Control Materials flow for AI agents.
+
+It helps agents answer: Where did this memory come from? Can this retrieved result be trusted?
+
+Central AI-readable map:
+https://ai-agent-payment-safety-stack.onrender.com/.well-known/external-control-materials.json
+
+OKF-style markdown knowledge bundle:
+https://ai-agent-payment-safety-stack.onrender.com/okf/index.md
+
+Core gates: trust (Search Result Trust Check) / execution (Tool Approval Check) / payment (Payment Review)
+
+Overall flow: Memory Provenance → Search Result Trust Check → Tool Approval → Payment Review → Evidence
+
+Related OKF concepts:
+- https://ai-agent-payment-safety-stack.onrender.com/okf/materials/search_result_trust_check.md
