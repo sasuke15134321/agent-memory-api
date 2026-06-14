@@ -6,6 +6,19 @@ Use this API when an AI agent needs to persist session context, audit records, o
 Core use case:
 Store encrypted AI agent memory with tamper-evident audit metadata after payments or decisions are made.
 
+## Search Result Trust Check API (Free)
+
+POST /api/search-result-trust/check returns allow / deny / review_required before an AI agent relies on a retrieved result, observation, or log.
+
+Input: agent_id / result_type / source / freshness / provenance / contradictions / intended_use / policy
+Output: decision / risk_level / reason / freshness_status / provenance_status / contradiction_status / evidence_id
+
+Use when: retrieving search results, operational logs, observations, or SOPs before tool execution, payment decisions, or physical actions.
+
+This MVP is free, stateless, and not included in x402 manifest.
+
+## Paid Memory Operations
+
 Main endpoint:
 POST /api/memory/store (0.05 USDC)
 

@@ -1,5 +1,37 @@
 # Agent Memory API Skill
 
+## Search Result Trust Check (Free)
+
+### Purpose
+Check trust of search results, observations, or operational records before using them for downstream AI agent decisions.
+
+### When to use
+- An AI agent retrieved external data and needs to check freshness
+- A system needs to verify source trust before tool execution
+- Data contains contradictions that need review before payment decisions
+- Observations or logs are used for physical/operational actions
+
+### When not to use
+- Replace actual security systems or policy enforcement
+- Replace human judgment for critical decisions
+- Guarantee completeness of trust assessment
+- Control robots or physical systems directly
+
+### Endpoint
+POST /api/search-result-trust/check (FREE)
+
+### Example
+{
+  "agent_id": "agent-001",
+  "result_type": "operational_log",
+  "source": {"trust_level": "medium", "source_type": "monitoring_system"},
+  "freshness": {"status": "current", "max_age_seconds": 300},
+  "intended_use": "tool_decision",
+  "policy": {"deny_stale_results": true, "require_review_on_conflict": true}
+}
+
+## Paid Memory Operations
+
 ## Purpose
 Use Agent Memory API after an AI agent completes a payment, API call, or decision that requires an audit record.
 

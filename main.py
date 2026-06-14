@@ -18,6 +18,7 @@ from datetime import datetime, timedelta
 import asyncio
 import traceback
 from fastapi.openapi.utils import get_openapi
+import hashlib
 
 from payment_verifier import PaymentVerifier
 from memory_engine import MemoryEngine
@@ -175,6 +176,54 @@ async def startup_event():
     except Exception as e:
         print(f"[WARN] Database initialization failed (continuing without DB): {e}")
         print("[OK] Agent Memory & Trust API started in DB-less mode")
+
+# Search Result Trust Check models
+class SearchResultSourceInput(BaseModel):
+    name: Optional[str] = Field(default=None)
+    source_type: Optional[str] = Field(default="unknown")
+    origin: Optional[str] = Field(default="unknown")
+    trust_level: Optional[str] = Field(default="unknown")
+
+class SearchResultFreshnessInput(BaseModel):
+    status: Optional[str] = Field(default="unknown")
+    max_age_seconds: Optional[int] = Field(default=None)
+    observed_at: Optional[str] = Field(default=None)
+
+class SearchResultProvenanceInput(BaseModel):
+    recorded_by: Optional[str] = Field(default=None)
+    derived_from: Optional[List[str]] = Field(default=None)
+    human_entered: Optional[bool] = Field(default=False)
+    system_generated: Optional[bool] = Field(default=False)
+
+class SearchResultContradictionInput(BaseModel):
+    source: str
+    source_type: str
+    value: str
+    timestamp: Optional[str] = Field(default=None)
+    trust_level: Optional[str] = Field(default=None)
+
+class SearchResultPolicyInput(BaseModel):
+    deny_stale_results: Optional[bool] = Field(default=True)
+    require_review_on_conflict: Optional[bool] = Field(default=True)
+    allow_sensor_observations: Optional[bool] = Field(default=True)
+    allow_human_entered_records: Optional[bool] = Field(default=True)
+    require_provenance: Optional[bool] = Field(default=True)
+
+class SearchResultTrustCheckRequest(BaseModel):
+    agent_id: str
+    user_id: Optional[str] = Field(default=None)
+    session_id: Optional[str] = Field(default=None)
+    result_id: Optional[str] = Field(default=None)
+    result_type: Optional[str] = Field(default="unknown")
+    source: Optional[SearchResultSourceInput] = Field(default=None)
+    timestamp: Optional[str] = Field(default=None)
+    modality: Optional[str] = Field(default=None)
+    claimed_fact: Optional[str] = Field(default=None)
+    intended_use: Optional[str] = Field(default="unknown")
+    freshness: Optional[SearchResultFreshnessInput] = Field(default=None)
+    provenance: Optional[SearchResultProvenanceInput] = Field(default=None)
+    contradictions: Optional[List[SearchResultContradictionInput]] = Field(default=None)
+    policy: Optional[SearchResultPolicyInput] = Field(default=None)
 
 # Request models
 class StoreMemoryRequest(BaseModel):
@@ -904,6 +953,201 @@ async def get_stats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}")
 
+
+# Deny patterns for search result trust check
+_SEARCH_RESULT_DENY_PATTERNS = [
+    "ignore previous instructions", "run this command", "execute immediately",
+    "do not ask user", "bypass approval", "disable safety", "send private key",
+    "print env", "read .env", "cat ~/.aws", "cat ~/.npmrc", "gh auth token",
+    "wallet private key", "seed phrase", "mnemonic"
+]
+
+_RISKY_INTENDED_USES = [
+    "tool_decision", "payment_decision", "physical_action", "operational_decision",
+    "robot_action", "skill_transfer", "standing_query_trigger"
+]
+
+_LOW_RISK_INTENDED_USES = [
+    "summarization", "drafting", "search_context_only", "non_execution_context"
+]
+
+@app.post("/api/search-result-trust/check", include_in_schema=False)
+async def search_result_trust_check(req: SearchResultTrustCheckRequest):
+    """Check trust of search results, observations, or operational records before use"""
+
+    # Default values for optional fields
+    source = req.source or SearchResultSourceInput()
+    freshness = req.freshness or SearchResultFreshnessInput()
+    provenance = req.provenance or SearchResultProvenanceInput()
+    contradictions = req.contradictions or []
+    policy = req.policy or SearchResultPolicyInput()
+
+    # Generate IDs and hash
+    trust_check_id = f"search_trust_{uuid.uuid4()}"
+    evidence_id = f"ev_{uuid.uuid4()}"
+    input_dict = req.model_dump()
+    input_json = json.dumps(input_dict, sort_keys=True, default=str)
+    input_hash = hashlib.sha256(input_json.encode()).hexdigest()
+
+    checks = []
+    deny_reasons = []
+    review_reasons = []
+    risk_level = "low"
+
+    # Check 1: Claimed fact for deny patterns
+    if req.claimed_fact:
+        claimed_fact_lower = req.claimed_fact.lower()
+        for pattern in _SEARCH_RESULT_DENY_PATTERNS:
+            if pattern in claimed_fact_lower:
+                deny_reasons.append(f"deny pattern in claimed_fact: {pattern}")
+                checks.append({"name": "claimed_fact_check", "result": "deny", "reason": f"Dangerous pattern detected: '{pattern}'"})
+                break
+
+    if not deny_reasons:
+        checks.append({"name": "claimed_fact_check", "result": "pass", "reason": "No dangerous patterns in claimed_fact"})
+
+    # Check 2: Freshness
+    freshness_status = freshness.status or "unknown"
+    if freshness_status == "stale" and policy.deny_stale_results:
+        deny_reasons.append("stale result with deny_stale_results=True")
+        checks.append({"name": "freshness_check", "result": "deny", "reason": "Result is stale and policy denies stale results"})
+    elif freshness_status in ["unknown", "undetermined"]:
+        review_reasons.append("freshness status unknown")
+        checks.append({"name": "freshness_check", "result": "review_required", "reason": "Freshness status is unknown"})
+    else:
+        checks.append({"name": "freshness_check", "result": "pass", "reason": f"Freshness status: {freshness_status}"})
+
+    # Check 3: Provenance
+    provenance_status = "missing"
+    if provenance.recorded_by or provenance.derived_from:
+        provenance_status = "complete"
+    elif provenance.human_entered or provenance.system_generated:
+        provenance_status = "partial"
+
+    if provenance_status == "missing" and policy.require_provenance:
+        deny_reasons.append("provenance missing with require_provenance=True")
+        checks.append({"name": "provenance_check", "result": "deny", "reason": "Provenance is missing and required by policy"})
+    elif provenance_status == "partial":
+        review_reasons.append("provenance partially available")
+        checks.append({"name": "provenance_check", "result": "review_required", "reason": "Provenance is partial"})
+    else:
+        checks.append({"name": "provenance_check", "result": "pass", "reason": f"Provenance status: {provenance_status}"})
+
+    # Check 4: Source trust level
+    source_trust_status = source.trust_level or "unknown"
+    if source_trust_status in ["low", "untrusted"]:
+        deny_reasons.append(f"source trust level: {source_trust_status}")
+        checks.append({"name": "source_trust_check", "result": "deny", "reason": f"Source trust level is {source_trust_status}"})
+    elif source_trust_status in ["medium", "unknown"]:
+        review_reasons.append(f"source trust level: {source_trust_status}")
+        checks.append({"name": "source_trust_check", "result": "review_required", "reason": f"Source trust level is {source_trust_status}"})
+    else:
+        checks.append({"name": "source_trust_check", "result": "pass", "reason": f"Source trust level: {source_trust_status}"})
+
+    # Check 5: Result type
+    result_type = req.result_type or "unknown"
+    risky_types = ["untrusted_external_instruction", "robot_observation", "sensor_reading", "business_record", "sop", "operational_log", "unknown"]
+    if result_type == "untrusted_external_instruction":
+        deny_reasons.append(f"result_type: {result_type}")
+        checks.append({"name": "result_type_check", "result": "deny", "reason": f"Result type is {result_type}"})
+    elif result_type in risky_types:
+        review_reasons.append(f"result_type: {result_type}")
+        checks.append({"name": "result_type_check", "result": "review_required", "reason": f"Result type {result_type} requires review"})
+    else:
+        checks.append({"name": "result_type_check", "result": "pass", "reason": f"Result type: {result_type}"})
+
+    # Check 6: Intended use
+    intended_use_status = req.intended_use or "unknown"
+    if intended_use_status in _RISKY_INTENDED_USES:
+        review_reasons.append(f"intended_use: {intended_use_status}")
+        checks.append({"name": "intended_use_check", "result": "review_required", "reason": f"Intended use '{intended_use_status}' requires review"})
+    else:
+        checks.append({"name": "intended_use_check", "result": "pass", "reason": f"Intended use: {intended_use_status}"})
+
+    # Check 7: Contradictions
+    contradiction_status = "none"
+    if contradictions:
+        contradiction_status = "found"
+        if policy.require_review_on_conflict:
+            review_reasons.append(f"contradictions found: {len(contradictions)} items")
+            checks.append({"name": "contradiction_check", "result": "review_required", "reason": f"Found {len(contradictions)} contradictions and policy requires review"})
+        else:
+            checks.append({"name": "contradiction_check", "result": "pass", "reason": f"Found {len(contradictions)} contradictions but policy allows"})
+    else:
+        checks.append({"name": "contradiction_check", "result": "pass", "reason": "No contradictions found"})
+
+    # Determine decision
+    if deny_reasons:
+        decision = "deny"
+        risk_level = "high"
+        recommended_action = "Block use of this result. Do not proceed."
+    elif review_reasons:
+        decision = "review_required"
+        risk_level = "medium"
+        recommended_action = "Route to human review or context verification before using for downstream decisions."
+    else:
+        decision = "allow"
+        risk_level = "low"
+        recommended_action = "Result can be used for intended purpose."
+
+    reason = "; ".join(deny_reasons) if deny_reasons else ("; ".join(review_reasons) if review_reasons else "All checks passed")
+
+    return {
+        "trust_check_id": trust_check_id,
+        "check_type": "search_result_trust_check",
+        "status": "created",
+        "experimental": True,
+        "stateless": True,
+        "free_mvp": True,
+        "agent_id": req.agent_id,
+        "result_id": req.result_id,
+        "decision": decision,
+        "risk_level": risk_level,
+        "reason": reason,
+        "recommended_action": recommended_action,
+        "result_type": result_type,
+        "freshness_status": freshness_status,
+        "provenance_status": provenance_status,
+        "contradiction_status": contradiction_status,
+        "source_trust_status": source_trust_status,
+        "intended_use_status": intended_use_status,
+        "checks": checks,
+        "evidence": {
+            "evidence_id": evidence_id,
+            "policy_version": "search-result-trust-v0.1",
+            "input_hash": input_hash,
+            "human_review_required": decision == "review_required",
+            "checks_performed": [c["name"] for c in checks]
+        },
+        "agent_action_atom": {
+            "atom_type": "search_result_trust_check_created",
+            "action_type": "search_result_trust_check",
+            "target": "retrieved_knowledge_or_observation",
+            "audit_ready": True,
+            "note": "Atom-compatible reference. This endpoint does not perform search or execute actions."
+        },
+        "can_feed_into": [
+            "Memory Provenance Context Record",
+            "Agent Tool Approval API",
+            "Agent Payment Review API",
+            "Payment Control Evidence Packet",
+            "External Control Materials Map"
+        ],
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "non_goals": [
+            "does not perform search",
+            "does not execute tools",
+            "does not control robots",
+            "does not execute physical actions",
+            "does not update business systems",
+            "does not replace safety systems",
+            "not a robotics controller",
+            "not a MES / WMS / CMMS",
+            "not an official standard",
+            "not legal or industrial safety certification"
+        ]
+    }
+
 @app.post("/api/memory-provenance-record/build", include_in_schema=False)
 async def build_memory_provenance_record(req: MemoryProvenanceRecordBuildRequest):
     state = req.state or MemoryStateInput()
@@ -963,41 +1207,60 @@ async def build_memory_provenance_record(req: MemoryProvenanceRecordBuildRequest
 
 @app.get("/.well-known/agent.json", include_in_schema=False)
 async def agent_json():
-    return {
-        "name": "Memory Provenance Context Record Builder",
-        "endpoint": "POST /api/memory-provenance-record/build",
-        "type": "experimental_stateless_builder",
-        "pricing": "free",
-        "x402_required": False,
-        "purpose": "Creates external control material for AI-agent memory and context usage, including raw sources, extracted facts, profile or context summary, state, use rule, evidence, last_checked, risk flags, and Atom-compatible reference.",
-        "use_when": [
-            "an AI agent needs to know whether a memory or context item can be used",
-            "an AI agent needs source-of-truth context before payment or tool decisions",
-            "a developer needs external provenance material for AI-agent memory usage",
-            "a system needs a context state record that can feed into Tool Permission Policy, Spending Policy, Payment Action Record, and Evidence Packet workflows"
-        ],
-        "can_feed_into": [
-            "Tool Permission Policy",
-            "Agent Spending Policy",
-            "Budget Check",
-            "Agent Action Atom",
-            "Agent Payment Action Record",
-            "Payment Control Evidence Packet",
-            "Decision Cost Trace",
-            "Memory Provenance Graph",
-            "Token Placement Governance"
-        ],
-        "non_goals": [
-            "not a memory store",
-            "not a vector database",
-            "not a model provider",
-            "not a payment protocol",
-            "not a wallet",
-            "not a settlement layer",
-            "not a legal compliance system",
-            "not an official standard"
-        ]
-    }
+    return [
+        {
+            "name": "Search Result Trust Check API",
+            "endpoint": "POST /api/search-result-trust/check",
+            "type": "search_result_trust_decision",
+            "pricing": "free",
+            "x402_required": False,
+            "purpose": "Returns allow, deny, or review_required before an AI agent relies on a retrieved result, memory atom, observation, SOP, log, or operational record.",
+            "use_when": [
+                "an AI agent needs to decide whether retrieved knowledge can be used for a downstream decision",
+                "a system needs to check freshness, provenance, source trust, and contradictions",
+                "a developer needs an evidence_id for a search-result trust decision",
+                "an agent is using search results before tool execution, payment review, operational decision, or physical action proposal"
+            ],
+            "returns": ["decision", "risk_level", "reason", "recommended_action", "freshness_status", "provenance_status", "contradiction_status", "source_trust_status", "intended_use_status", "evidence_id"],
+            "can_feed_into": ["Memory Provenance Context Record", "Agent Tool Approval API", "Agent Payment Review API", "Payment Control Evidence Packet", "External Control Materials Map"],
+            "non_goals": ["does not perform search", "does not execute tools", "does not control robots", "does not execute physical actions", "does not update business systems", "does not replace safety systems", "not a robotics controller", "not a MES / WMS / CMMS", "not an official standard", "not legal or industrial safety certification"]
+        },
+        {
+            "name": "Memory Provenance Context Record Builder",
+            "endpoint": "POST /api/memory-provenance-record/build",
+            "type": "experimental_stateless_builder",
+            "pricing": "free",
+            "x402_required": False,
+            "purpose": "Creates external control material for AI-agent memory and context usage, including raw sources, extracted facts, profile or context summary, state, use rule, evidence, last_checked, risk flags, and Atom-compatible reference.",
+            "use_when": [
+                "an AI agent needs to know whether a memory or context item can be used",
+                "an AI agent needs source-of-truth context before payment or tool decisions",
+                "a developer needs external provenance material for AI-agent memory usage",
+                "a system needs a context state record that can feed into Tool Permission Policy, Spending Policy, Payment Action Record, and Evidence Packet workflows"
+            ],
+            "can_feed_into": [
+                "Tool Permission Policy",
+                "Agent Spending Policy",
+                "Budget Check",
+                "Agent Action Atom",
+                "Agent Payment Action Record",
+                "Payment Control Evidence Packet",
+                "Decision Cost Trace",
+                "Memory Provenance Graph",
+                "Token Placement Governance"
+            ],
+            "non_goals": [
+                "not a memory store",
+                "not a vector database",
+                "not a model provider",
+                "not a payment protocol",
+                "not a wallet",
+                "not a settlement layer",
+                "not a legal compliance system",
+                "not an official standard"
+            ]
+        }
+    ]
 
 
 @app.get("/health", include_in_schema=False)
@@ -1029,6 +1292,7 @@ async def root():
         "service": "Agent Memory & Trust API",
         "description": "AI agent memory, trust verification, and context management infrastructure",
         "endpoints": {
+            "search_result_trust_check": "/api/search-result-trust/check",
             "memory_store": "/api/memory/store",
             "memory_recall": "/api/memory/recall",
             "memory_delete": "/api/memory/delete",
@@ -1042,6 +1306,7 @@ async def root():
             "discovery": "/.well-known/x402.json"
         },
         "pricing": {
+            "search_result_trust_check": "free",
             "memory_store": "0.05 USDC",
             "memory_recall": "0.03 USDC",
             "memory_delete": "0.03 USDC",
@@ -1053,7 +1318,7 @@ async def root():
         },
         "network": "base",
         "currency": "USDC",
-        "features": ["Agent Memory Management", "AES-256 Encryption", "Deletion Proof", "Audit Log", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction"]
+        "features": ["Agent Memory Management", "AES-256 Encryption", "Deletion Proof", "Audit Log", "Trust Verification", "Context Handover", "Content Compression", "Information Extraction", "Search Result Trust Check"]
     }
 
 @app.get("/llms.txt", include_in_schema=False)
