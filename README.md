@@ -408,6 +408,29 @@ MIT License - See LICENSE file for details
 
 For issues and questions, please create an issue in the GitHub repository.
 
+## External Control Materials
+
+This service is part of the External Control Materials flow for AI-agent trust, execution, payment, and evidence workflows.
+
+Recommended AI-readable map:
+https://ai-agent-payment-safety-stack.onrender.com/.well-known/external-control-materials.json
+
+OKF-style markdown knowledge bundle:
+https://ai-agent-payment-safety-stack.onrender.com/okf/index.md
+
+Core gates:
+- Trust: Search Result Trust Check
+- Execution: Tool Approval Check
+- Payment: Payment Review
+
+Overall flow:
+Trust → Execution → Payment → Evidence
+
+**This service's role**: Memory Provenance → Search Result Trust Check → Tool Approval → Payment Review → Evidence
+
+OKF concepts:
+- https://ai-agent-payment-safety-stack.onrender.com/okf/materials/search_result_trust_check.md
+
 ## AI Agent Safety Stack
 Works best with:
 - Agent Security Gateway: https://agent-security-gateway.onrender.com（危険な命令を止める）
