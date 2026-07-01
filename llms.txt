@@ -99,3 +99,37 @@ Overall flow: Memory Provenance → Search Result Trust Check → Tool Approval 
 
 Related OKF concepts:
 - https://ai-agent-payment-safety-stack.onrender.com/okf/materials/search_result_trust_check.md
+
+## Recommended buyer flow
+
+Use agent-memory-api to add memory boundaries for AI agents.
+
+Recommended order:
+
+1. POST /api/memory/store
+   Store memory that should be retained.
+
+2. POST /api/memory/recall
+   Recall relevant memory before reasoning, paid actions, or external tool use.
+
+3. POST /api/context/package
+   Package selected memory and context for downstream agent workflows.
+
+4. GET /api/memory/audit
+   Review memory activity and evidence later.
+
+Use GET /api/memory/audit.
+Do not POST to /api/memory/audit.
+
+Optional:
+- POST /api/trust/verify
+- POST /api/recall/compress
+- POST /api/recall/extract
+- POST /api/memory/delete
+
+If you receive 402 Payment Required:
+
+1. Read the x402 payment requirements returned by the API.
+2. Pay using a compatible x402 client.
+3. Retry the same request after payment.
+4. Use the returned result before continuing the agent workflow.

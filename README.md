@@ -480,3 +480,48 @@ The builder is free because it creates the provenance and state record structure
 Actual memory storage, recall, encryption, search, or verification remain handled by memory operation endpoints.
 
 It is not a memory store, not a vector database, not a model provider, not a payment protocol, not a wallet, not a settlement layer, not a legal compliance system, and not an official standard.
+
+## Buyer benefit: memory boundaries for AI agents
+
+agent-memory-api is not only a memory storage API.
+
+It helps buyers and AI agent operators define boundaries around memory:
+- what should be stored
+- what should be recalled
+- what should be packaged into context
+- what should be trusted
+- what should be compressed or extracted
+- what should be deleted
+- what should be audited later
+
+This helps reduce unnecessary memory storage, memory poisoning risk, context drift, and unclear memory-based decisions.
+
+Recommended buyer flow:
+
+1. POST /api/memory/store
+   Store memory that should be retained for future agent use.
+
+2. POST /api/memory/recall
+   Recall relevant memory before agent reasoning, paid actions, or external tool use.
+
+3. POST /api/context/package
+   Package selected memory and context for downstream agent workflows.
+
+4. GET /api/memory/audit
+   Review memory activity and evidence later.
+
+Use GET /api/memory/audit.
+Do not POST to /api/memory/audit.
+
+Optional checks:
+- POST /api/trust/verify
+- POST /api/recall/compress
+- POST /api/recall/extract
+- POST /api/memory/delete
+
+If any paid endpoint returns 402 Payment Required:
+
+1. Read the x402 payment requirements returned by the API.
+2. Pay using a compatible x402 client.
+3. Retry the same request after payment.
+4. Use the returned memory, context, or audit result before continuing the agent workflow.
