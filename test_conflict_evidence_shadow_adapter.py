@@ -49,7 +49,8 @@ def test_case_a_revoked_allowed_produces_conflict_evidence():
     assert ev["consistency_rule"] == RULE_1_MSG
     assert ev["assembly_outcome"] == "rejected"
     assert ev["decision_record_generated"] is False
-    assert len(ev) == 9
+    assert ev["attempted_decision_id"] == "dec-test"
+    assert len(ev) == 10
     assert "final_decision" not in ev
 
 
@@ -75,7 +76,8 @@ def test_case_b_unknown_allowed_fires_rule_1():
     assert ev["consistency_rule"] == RULE_1_MSG
     assert ev["assembly_outcome"] == "rejected"
     assert ev["decision_record_generated"] is False
-    assert len(ev) == 9
+    assert ev["attempted_decision_id"] == "dec-test"
+    assert len(ev) == 10
     assert "final_decision" not in ev
 
 
@@ -102,7 +104,8 @@ def test_case_c_revoked_denied_purpose_mismatch_fires_rule_2():
     assert ev["consistency_rule"] == RULE_2_MSG
     assert ev["assembly_outcome"] == "rejected"
     assert ev["decision_record_generated"] is False
-    assert len(ev) == 9
+    assert ev["attempted_decision_id"] == "dec-test"
+    assert len(ev) == 10
     assert "final_decision" not in ev
 
 

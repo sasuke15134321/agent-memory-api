@@ -6,6 +6,7 @@ No DB, no network, no file access, no current time, no UUID generation.
 
 
 def build_conflict_evidence(
+    attempted_decision_id: str,
     memory_id: str,
     left_check_type: str,
     left_result: str,
@@ -18,6 +19,7 @@ def build_conflict_evidence(
 ) -> dict:
     # Structural validation only — not semantic correctness
     required_strings = {
+        "attempted_decision_id": attempted_decision_id,
         "memory_id": memory_id,
         "left_check_type": left_check_type,
         "left_result": left_result,
@@ -39,6 +41,7 @@ def build_conflict_evidence(
         )
 
     return {
+        "attempted_decision_id": attempted_decision_id,
         "memory_id": memory_id,
         "left_check_type": left_check_type,
         "left_result": left_result,

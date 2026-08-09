@@ -59,6 +59,7 @@ def assemble_with_conflict_evidence(
         # Shadow Caller does not inspect exc to re-determine which rule fired.
         # str(exc) is reused as consistency_rule — human-readable, not stable rule ID.
         evidence = build_conflict_evidence(
+            attempted_decision_id=decision_id,
             memory_id=revocation_result.memory_id,
             left_check_type="revocation",
             left_result=revocation_result.revocation_status,
