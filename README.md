@@ -23,6 +23,8 @@ Related components:
 
 All APIs are indexed in CDP Bazaar and support x402-style payments.
 
+- [Conflict Evidence Validation](docs/conflict_evidence_validation.md)
+
 ## Disclaimer
 
 This is an independent experimental project.
