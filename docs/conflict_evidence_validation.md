@@ -75,9 +75,12 @@ RevocationResult + EligibilityResult
 
 ## Evidence Fields
 
-Current Local Prototype Contract — 9 fields:
+Current Local Prototype Contract — 10 fields:
+
+`attempted_decision_id` added as the first field. Identifies which decision attempt produced the conflict.
 
 ```
+attempted_decision_id
 memory_id
 left_check_type
 left_result
