@@ -16,17 +16,25 @@ from typing import Optional
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 BASE_URL = os.getenv("MEMORY_API_BASE_URL", "https://agent-memory-api-bix5.onrender.com").rstrip("/")
 PAYMENT_TOKEN = os.getenv("MCP_PAYMENT_TOKEN", "")
+
+PUBLIC_HOST = "agent-memory-api-bix5.onrender.com"
+TRANSPORT_SECURITY = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=[PUBLIC_HOST, f"{PUBLIC_HOST}:*"],
+    allowed_origins=[f"https://{PUBLIC_HOST}", f"https://{PUBLIC_HOST}:*"],
+)
 
 
 class _MountedMCPApp:
     """ASGI wrapper that owns Streamable HTTP session-manager lifetime when mounted.
 
-    Starlette does not run lifespan handlers for mounted sub-applications.  FastMCP's
+    Starlette does not run lifespan handlers for mounted sub-applications. FastMCP's
     Streamable HTTP handler therefore needs its session_manager.run() context to be
-    owned by a task in the parent process.  This wrapper starts that context lazily on
+    owned by a task in the parent process. This wrapper starts that context lazily on
     the first HTTP request and keeps it alive for the lifetime of the process.
     """
 
@@ -68,10 +76,14 @@ class MountedFastMCP(FastMCP):
         return _MountedMCPApp(app, self.session_manager)
 
 
-# main.py mounts this ASGI app at /mcp. Keep the MCP app's internal
-# Streamable HTTP path at / so the public endpoint is exactly /mcp,
-# not /mcp/mcp.
-mcp = MountedFastMCP("Agent Memory API", streamable_http_path="/")
+# Mounted at /mcp by the parent FastAPI app. Keep the internal path at /
+# so the public endpoint is /mcp rather than /mcp/mcp. Keep DNS-rebinding
+# protection enabled and explicitly allow only this service's Render hostname.
+mcp = MountedFastMCP(
+    "Agent Memory API",
+    streamable_http_path="/",
+    transport_security=TRANSPORT_SECURITY,
+)
 _mcp_transport_installed = False
 
 
