@@ -20,7 +20,10 @@ from mcp.server.fastmcp import FastMCP
 BASE_URL = os.getenv("MEMORY_API_BASE_URL", "https://agent-memory-api-bix5.onrender.com").rstrip("/")
 PAYMENT_TOKEN = os.getenv("MCP_PAYMENT_TOKEN", "")
 
-mcp = FastMCP("Agent Memory API")
+# main.py mounts this ASGI app at /mcp. Keep the MCP app's internal
+# Streamable HTTP path at / so the public endpoint is exactly /mcp,
+# not /mcp/mcp.
+mcp = FastMCP("Agent Memory API", streamable_http_path="/")
 
 
 def _headers() -> dict:
