@@ -11,7 +11,7 @@ Payment:  MCP_PAYMENT_TOKEN env var → X-PAYMENT header (omit when TEST_MODE=tr
 
 import os
 import json
-import asyncio
+import logging
 from typing import Optional
 
 import httpx
@@ -20,10 +20,38 @@ from mcp.server.fastmcp import FastMCP
 BASE_URL = os.getenv("MEMORY_API_BASE_URL", "https://agent-memory-api-bix5.onrender.com").rstrip("/")
 PAYMENT_TOKEN = os.getenv("MCP_PAYMENT_TOKEN", "")
 
-# main.py mounts this ASGI app at /mcp. Keep the MCP app's internal
-# Streamable HTTP path at / so the public endpoint is exactly /mcp,
-# not /mcp/mcp.
+# Mounted at /mcp by the parent FastAPI app. Keep the internal path at /
+# so the public endpoint is /mcp rather than /mcp/mcp.
 mcp = FastMCP("Agent Memory API", streamable_http_path="/")
+_mcp_session_context = None
+_mcp_transport_installed = False
+
+
+def install_http_transport(parent_app, mount_path: str = "/mcp") -> None:
+    """Mount MCP and attach its session manager lifecycle to FastAPI once."""
+    global _mcp_transport_installed
+    if _mcp_transport_installed:
+        return
+
+    parent_app.mount(mount_path, mcp.streamable_http_app())
+
+    async def _start_mcp_session_manager():
+        global _mcp_session_context
+        if _mcp_session_context is None:
+            _mcp_session_context = mcp.session_manager.run()
+            await _mcp_session_context.__aenter__()
+            logging.getLogger(__name__).info("MCP session manager started")
+
+    async def _stop_mcp_session_manager():
+        global _mcp_session_context
+        if _mcp_session_context is not None:
+            await _mcp_session_context.__aexit__(None, None, None)
+            _mcp_session_context = None
+            logging.getLogger(__name__).info("MCP session manager stopped")
+
+    parent_app.add_event_handler("startup", _start_mcp_session_manager)
+    parent_app.add_event_handler("shutdown", _stop_mcp_session_manager)
+    _mcp_transport_installed = True
 
 
 def _headers() -> dict:
@@ -51,8 +79,6 @@ async def _get(path: str, params: dict | None = None) -> dict:
         return resp.json()
 
 
-# ── Tools ──────────────────────────────────────────────────────────────────────
-
 @mcp.tool()
 async def memory_store(
     agent_id: str,
@@ -61,19 +87,7 @@ async def memory_store(
     tags: Optional[list[str]] = None,
     ttl: Optional[int] = 86400,
 ) -> str:
-    """
-    AIエージェントの記憶を保存します (0.05 USDC)。
-
-    Args:
-        agent_id:   エージェントの識別子
-        session_id: セッションの識別子
-        context:    保存する記憶のテキスト
-        tags:       検索用タグのリスト（省略可）
-        ttl:        保存期間（秒、デフォルト86400=24時間）
-
-    Returns:
-        memory_id, stored_at, expires_at を含むJSON文字列
-    """
+    """Store encrypted agent memory (0.05 USDC)."""
     result = await _post("/api/memory/store", {
         "agent_id": agent_id,
         "session_id": session_id,
@@ -91,18 +105,7 @@ async def memory_recall(
     tags: Optional[list[str]] = None,
     limit: Optional[int] = 10,
 ) -> str:
-    """
-    保存された記憶をクエリで検索・想起します (0.03 USDC)。
-
-    Args:
-        agent_id: エージェントの識別子
-        query:    検索クエリ
-        tags:     絞り込みタグ（省略可）
-        limit:    最大取得件数（デフォルト10）
-
-    Returns:
-        memories リストを含むJSON文字列
-    """
+    """Recall encrypted agent memory by query (0.03 USDC)."""
     result = await _post("/api/memory/recall", {
         "agent_id": agent_id,
         "query": query,
@@ -113,22 +116,8 @@ async def memory_recall(
 
 
 @mcp.tool()
-async def memory_delete(
-    memory_id: str,
-    agent_id: str,
-    reason: str,
-) -> str:
-    """
-    指定した記憶を完全削除し、SHA256削除証跡を返します (0.03 USDC)。
-
-    Args:
-        memory_id: 削除する記憶のID（memory_store で取得）
-        agent_id:  エージェントの識別子
-        reason:    削除理由（監査ログに記録）
-
-    Returns:
-        deleted, deletion_proof（SHA256ハッシュ）を含むJSON文字列
-    """
+async def memory_delete(memory_id: str, agent_id: str, reason: str) -> str:
+    """Delete memory and return its deletion proof (0.03 USDC)."""
     result = await _post("/api/memory/delete", {
         "memory_id": memory_id,
         "agent_id": agent_id,
@@ -142,24 +131,13 @@ async def memory_audit(
     agent_id: Optional[str] = None,
     limit: Optional[int] = 100,
 ) -> str:
-    """
-    保存・想起・削除の全操作監査ログを取得します (0.05 USDC)。
-
-    Args:
-        agent_id: エージェントIDでフィルタ（省略時は全エージェント）
-        limit:    最大取得件数（デフォルト100）
-
-    Returns:
-        audit_logs リストとtotal_countを含むJSON文字列
-    """
+    """Get memory operation audit logs (0.05 USDC)."""
     params: dict = {"limit": limit}
     if agent_id:
         params["agent_id"] = agent_id
     result = await _get("/api/memory/audit", params=params)
     return json.dumps(result, ensure_ascii=False, indent=2)
 
-
-# ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     mcp.run()
