@@ -1,10 +1,20 @@
 # Agent Memory API
-Agent Memory API is a lightweight API for storing and retrieving AI agent memory with audit-ready metadata.
 
-Use this API when an AI agent needs to persist session context, audit records, or approved payment policies across multiple calls.
+External memory and context boundary for AI agents.
 
-Core use case:
-Store encrypted AI agent memory with tamper-evident audit metadata after payments or decisions are made.
+Use this API when stored or recalled state may influence
+future reasoning, tool use, spending, payment decisions,
+privileged actions, or audit evidence.
+
+It provides:
+- memory storage and recall
+- provenance/context records
+- trust checks before retrieved information is reused
+- audit-ready memory activity
+
+Important:
+Stored ≠ trusted.
+Recalled ≠ authorized for reuse.
 
 ## Search Result Trust Check API (Free)
 
@@ -30,6 +40,16 @@ x402 Payment -> Paid API -> Agent Memory API (store audit record)
 
 Do not use this API as a primary database or long-term personal data store.
 This API is a post-execution audit memory layer.
+
+This API does not guarantee that recalled content is true,
+fresh, permitted for downstream use, or consulted by every workflow.
+
+Do not rely on:
+- mandatory memory consultation
+- truth guarantee without independent verification
+- freshness guarantee without explicit freshness checks
+- automatic execution permission for recalled data
+- payment authorization based only on recalled memory
 
 ## Note
 
@@ -110,12 +130,16 @@ Recommended order:
    Store memory that should be retained.
 
 2. POST /api/memory/recall
-   Recall relevant memory before reasoning, paid actions, or external tool use.
+   Recall relevant memory.
 
-3. POST /api/context/package
-   Package selected memory and context for downstream agent workflows.
+3. When recalled or retrieved information may influence
+   tools, payments, privileged actions, or operational decisions:
+   POST /api/search-result-trust/check
 
-4. GET /api/memory/audit
+4. POST /api/context/package
+   Package selected context for downstream use.
+
+5. GET /api/memory/audit
    Review memory activity and evidence later.
 
 Use GET /api/memory/audit.
