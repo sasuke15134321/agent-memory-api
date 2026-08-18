@@ -115,7 +115,7 @@ https://ai-agent-payment-safety-stack.onrender.com/okf/index.md
 
 Core gates: trust (Search Result Trust Check) / execution (Tool Approval Check) / payment (Payment Review)
 
-Overall flow: Memory Provenance → Search Result Trust Check → Tool Approval → Payment Review → Evidence
+Memory-side local flow: Memory Provenance → Search Result Trust Check → Tool Approval → Payment Review → Evidence
 
 Related OKF concepts:
 - https://ai-agent-payment-safety-stack.onrender.com/okf/materials/search_result_trust_check.md
